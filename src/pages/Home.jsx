@@ -92,6 +92,7 @@ export default function Home() {
       <GfStyles />
       <Nav />
       <Hero />
+      <Intro />
       <Services />
       <Differentiators />
       <FinalCTA />
@@ -297,15 +298,15 @@ function GfStyles() {
 
       /* Headline scaling */
       .gf-h1 {
-        font-size: clamp(56px, 9vw, 132px);
-        line-height: 0.92;
-        letter-spacing: -0.04em;
+        font-size: clamp(46px, 7.6vw, 104px);
+        line-height: 0.96;
+        letter-spacing: -0.035em;
         font-weight: 500;
       }
       .gf-h2 {
-        font-size: clamp(40px, 6vw, 72px);
-        line-height: 1;
-        letter-spacing: -0.03em;
+        font-size: clamp(32px, 4.6vw, 56px);
+        line-height: 1.04;
+        letter-spacing: -0.025em;
         font-weight: 500;
       }
 
@@ -328,7 +329,170 @@ function GfStyles() {
       }
 
       @media (max-width: 640px) {
-        .gf-h1 { font-size: clamp(46px, 12vw, 80px); }
+        .gf-h1 { font-size: clamp(38px, 11vw, 64px); }
+      }
+
+      /* ─── Hero slide stack (non-carousel) ───
+         All slides occupy the same grid cell so the parent sizes to the
+         tallest, then we crossfade between them via opacity + translate. */
+      .gf-slides {
+        display: grid;
+        grid-template-columns: 1fr;
+        position: relative;
+      }
+      .gf-slide {
+        grid-column: 1;
+        grid-row: 1;
+        opacity: 0;
+        transform: translateY(14px);
+        transition: opacity 0.7s cubic-bezier(.22,.61,.36,1),
+                    transform 0.7s cubic-bezier(.22,.61,.36,1);
+        pointer-events: none;
+      }
+      .gf-slide.is-active {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+
+      /* ─── Frame navigator (replaces dots/arrows) ───
+         Console-style indicator strip. Active tile gets a glowing green
+         line filling its top edge; doubles as the auto-advance progress. */
+      .gf-frame-nav {
+        margin-top: 80px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1px;
+        background: var(--border);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+      .gf-frame-tile {
+        background: var(--bg);
+        border: 0;
+        padding: 22px 28px;
+        text-align: left;
+        position: relative;
+        cursor: pointer;
+        font: inherit;
+        color: inherit;
+        font-family: var(--mono);
+        transition: background 0.3s ease;
+      }
+      .gf-frame-tile:hover { background: rgba(255,255,255,0.025); }
+      .gf-frame-tile::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: var(--border-bright);
+        transition: background 0.4s ease;
+      }
+      .gf-frame-tile.is-active::before { background: rgba(31,224,122,0.18); }
+
+      .gf-frame-num {
+        display: block;
+        font-size: 11px;
+        color: var(--dim);
+        letter-spacing: 0.22em;
+        margin-bottom: 8px;
+        transition: color 0.4s ease;
+      }
+      .gf-frame-tag {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        letter-spacing: 0.2em;
+        transition: color 0.4s ease;
+      }
+      .gf-frame-tile.is-active .gf-frame-num { color: var(--green); }
+      .gf-frame-tile.is-active .gf-frame-tag { color: var(--text); }
+
+      .gf-frame-fill {
+        position: absolute;
+        top: 0; left: 0;
+        height: 1px;
+        background: var(--green);
+        box-shadow: 0 0 12px var(--green-soft), 0 0 4px var(--green);
+        animation: gfFrameFill linear forwards;
+        pointer-events: none;
+      }
+      @keyframes gfFrameFill {
+        from { width: 0; }
+        to   { width: 100%; }
+      }
+
+      @media (max-width: 640px) {
+        .gf-frame-nav { margin-top: 56px; }
+        .gf-frame-tile { padding: 16px 14px; }
+        .gf-frame-num { font-size: 10px; margin-bottom: 6px; letter-spacing: 0.18em; }
+        .gf-frame-tag { font-size: 11px; letter-spacing: 0.14em; }
+      }
+
+      /* ─── Hero viewport-fit + background image ─── */
+      .gf-hero {
+        position: relative;
+        min-height: 100vh;
+        min-height: 100svh;     /* small-viewport fallback for mobile chrome */
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .gf-hero-inner {
+        position: relative;
+        flex: 1;
+        width: 100%;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 110px 24px 32px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;          /* allow flex children to shrink */
+      }
+      @media (min-width: 1024px) {
+        .gf-hero-inner { padding: 120px 40px 40px; }
+      }
+      .gf-hero-center {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 32px 0;
+        min-height: 0;
+      }
+      /* Background image — swap the URL for your final hero asset.
+         Treated heavily so it doesn't compete with the grid/orb layers. */
+      .gf-hero-bg {
+        position: absolute;
+        inset: 0;
+        background-image: url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=2400&q=80');
+        background-size: cover;
+        background-position: center;
+        opacity: 0.22;
+        filter: grayscale(100%) contrast(1.05);
+        pointer-events: none;
+      }
+      /* Dark veil for text legibility — sits between image and grid */
+      .gf-hero-veil {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          180deg,
+          rgba(10, 10, 11, 0.65) 0%,
+          rgba(10, 10, 11, 0.45) 45%,
+          rgba(10, 10, 11, 0.95) 100%
+        );
+        pointer-events: none;
+      }
+
+      /* On short viewports, ease up vertical padding so it still fits */
+      @media (max-height: 720px) {
+        .gf-hero-inner { padding-top: 96px; padding-bottom: 24px; }
+        .gf-hero-center { padding: 24px 0; }
+      }
+      @media (max-height: 600px) {
+        .gf-hero-inner { padding-top: 88px; padding-bottom: 16px; }
+        .gf-hero-center { padding: 16px 0; }
       }
     `}</style>
   );
@@ -430,6 +594,61 @@ function Nav() {
 
 function Hero() {
   const spotRef = useMouseGlow();
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // Auto-advance interval. User clicks reset this timer (via dep on activeIndex).
+  const ROTATE_MS = 7000;
+
+  // Three frames, copy verbatim from groowfuse.com hero slider.
+  const slides = [
+    {
+      tag: 'TRUST',
+      headline: (
+        <>
+          Experience You Can{' '}
+          <span className="gf-serif" style={{ color: 'var(--green)' }}>Trust</span>.
+          <span className="gf-caret" />
+        </>
+      ),
+      sub: 'Empowering your business with innovative IT strategies that bridge the gap between technology and vision.',
+      primary: { label: 'Get Started', href: '/contact' },
+      secondary: { label: 'Our Services', href: '/services' },
+    },
+    {
+      tag: 'GROWTH',
+      headline: (
+        <>
+          Grow <span className="gf-serif" style={{ color: 'var(--green)' }}>Faster</span>{' '}
+          &amp; <span className="gf-serif" style={{ color: 'var(--green)' }}>Safer</span>.
+          <span className="gf-caret" />
+        </>
+      ),
+      sub: 'We help organizations of all sizes implement smarter, secure, and future-proof digital infrastructures.',
+      primary: { label: 'Book Consultation', href: '/contact' },
+      secondary: { label: 'About Us', href: '/about' },
+    },
+    {
+      tag: 'DIGITAL',
+      headline: (
+        <>
+          Digital <span className="gf-serif" style={{ color: 'var(--green)' }}>Transformation</span>.
+          <span className="gf-caret" />
+        </>
+      ),
+      sub: 'Specialized Business Analysis and Data Management to keep your business resilient.',
+      primary: { label: 'Book Consultation', href: '/contact' },
+      secondary: { label: 'Our Services', href: '/services' },
+    },
+  ];
+
+  // Effect re-runs on every activeIndex change → click also resets the timer.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setActiveIndex((i) => (i + 1) % slides.length);
+    }, ROTATE_MS);
+    return () => clearTimeout(id);
+  }, [activeIndex, slides.length]);
+
   const capabilities = [
     'Process Analysis',
     'IT Procurement',
@@ -440,75 +659,165 @@ function Hero() {
   ];
 
   return (
-    <section ref={spotRef} className="gf-spotlight relative pt-[140px] pb-[120px] overflow-hidden">
+    <section ref={spotRef} className="gf-hero gf-spotlight">
+      {/* Background image (treated) — swap URL to use your own */}
+      <div aria-hidden className="gf-hero-bg" />
+      {/* Dark veil for legibility */}
+      <div aria-hidden className="gf-hero-veil" />
       {/* Background grid */}
-      <div className="absolute inset-0 gf-grid gf-drift opacity-90 pointer-events-none" />
+      <div className="absolute inset-0 gf-grid gf-drift opacity-80 pointer-events-none" />
       {/* Top fade */}
       <div className="absolute inset-x-0 top-0 h-[200px] pointer-events-none"
         style={{ background: 'linear-gradient(to bottom, var(--bg), transparent)' }} />
       {/* Bottom fade */}
-      <div className="absolute inset-x-0 bottom-0 h-[200px] pointer-events-none"
+      <div className="absolute inset-x-0 bottom-0 h-[160px] pointer-events-none"
         style={{ background: 'linear-gradient(to top, var(--bg), transparent)' }} />
       {/* Green orb */}
       <div
         aria-hidden
         className="gf-orb absolute"
         style={{
-          left: '50%', top: '60%', width: 520, height: 520,
+          left: '50%', top: '65%', width: 520, height: 520,
           background: 'radial-gradient(circle, rgba(31,224,122,0.28) 0%, rgba(31,224,122,0.08) 35%, transparent 70%)',
           filter: 'blur(40px)',
           pointerEvents: 'none',
         }}
       />
       {/* Noise overlay */}
-      <div className="absolute inset-0 gf-noise opacity-40 pointer-events-none mix-blend-overlay" />
+      <div className="absolute inset-0 gf-noise opacity-25 pointer-events-none mix-blend-overlay" />
 
-      <div className="relative max-w-[1280px] mx-auto px-6 lg:px-10">
-        {/* Top strip */}
-        <div className="flex items-center justify-between mb-12 gf-rise" style={{ animationDelay: '.05s' }}>
+      <div className="gf-hero-inner">
+        {/* TOP — eyebrow + frame index */}
+        <div className="flex items-center justify-between gf-rise" style={{ animationDelay: '.05s' }}>
           <span className="gf-eyebrow">Groow Fuse Consult</span>
-          <span className="hidden sm:inline" style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--dim)' }}>
-            v2.0 · Abuja, NG
-          </span>
-        </div>
-
-        {/* Headline */}
-        <h1 className="gf-h1 gf-rise" style={{ animationDelay: '.15s', maxWidth: '17ch' }}>
-          Grow <span className="gf-serif" style={{ color: 'var(--green)' }}>faster</span>.<br />
-          Build <span className="gf-serif">safer</span>.<span className="gf-caret" />
-        </h1>
-
-        {/* Subhead */}
-        <p className="gf-rise mt-10 max-w-[58ch] text-[18px] md:text-[20px] leading-relaxed"
-          style={{ color: 'var(--muted)', animationDelay: '.3s' }}>
-          We help organizations of all sizes implement smarter, secure, and future-proof
-          digital infrastructures — from process redesign to procurement to digital transformation.
-        </p>
-
-        {/* CTAs */}
-        <div className="gf-rise mt-12 flex flex-wrap gap-3" style={{ animationDelay: '.45s' }}>
-          <a href="/contact" className="gf-btn-primary px-6 py-3.5 rounded-md text-[14px] inline-flex items-center gap-2 tracking-tight">
-            Book a Consultation
-            <span aria-hidden>→</span>
-          </a>
-          <a href="/services" className="gf-btn-ghost px-6 py-3.5 rounded-md text-[14px] font-medium inline-flex items-center gap-2 tracking-tight">
-            Explore Services
-            <span aria-hidden>↗</span>
-          </a>
-        </div>
-
-        {/* Capability strip */}
-        <div className="gf-rise mt-24 pt-10 border-t flex flex-wrap items-center gap-x-10 gap-y-4"
-          style={{ borderColor: 'var(--border)', animationDelay: '.6s' }}>
-          <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--dim)', letterSpacing: '0.18em' }}>
-            CORE CAPABILITIES /
-          </span>
-          {capabilities.map((c) => (
-            <span key={c} style={{ fontFamily: 'var(--mono)', fontSize: 13 }} className="text-white/80">
-              {c}
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--dim)', letterSpacing: '0.22em' }}>
+            FRAME{' '}
+            <span style={{ color: 'var(--green)' }}>
+              {String(activeIndex + 1).padStart(2, '0')}
             </span>
-          ))}
+            {' '}/ {String(slides.length).padStart(2, '0')}
+          </span>
         </div>
+
+        {/* CENTER — slide stack vertically centered, grows to fill remaining space */}
+        <div className="gf-hero-center">
+          <div className="gf-slides gf-rise" style={{ animationDelay: '.15s' }}>
+            {slides.map((slide, i) => {
+              const isActive = i === activeIndex;
+              return (
+                <div
+                  key={i}
+                  className={`gf-slide ${isActive ? 'is-active' : ''}`}
+                  aria-hidden={!isActive}
+                >
+                  <h2 className="gf-h2" style={{ maxWidth: '17ch' }}>
+                    {slide.headline}
+                  </h2>
+                  <p className="mt-10 max-w-[58ch] text-[17px] md:text-[19px] leading-relaxed"
+                    style={{ color: 'var(--muted)' }}>
+                    {slide.sub}
+                  </p>
+                  <div className="mt-12 flex flex-wrap gap-3">
+                    <a
+                      href={slide.primary.href}
+                      tabIndex={isActive ? 0 : -1}
+                      className="gf-btn-primary px-6 py-3.5 rounded-md text-[14px] inline-flex items-center gap-2 tracking-tight"
+                    >
+                      {slide.primary.label}
+                      <span aria-hidden>→</span>
+                    </a>
+                    <a
+                      href={slide.secondary.href}
+                      tabIndex={isActive ? 0 : -1}
+                      className="gf-btn-ghost px-6 py-3.5 rounded-md text-[14px] font-medium inline-flex items-center gap-2 tracking-tight"
+                    >
+                      {slide.secondary.label}
+                      <span aria-hidden>↗</span>
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* BOTTOM — frame nav + capability strip */}
+        <div>
+          {/* Frame navigator — non-carousel: console-style indicator strip */}
+          <div
+            className="gf-frame-nav gf-rise"
+            style={{ animationDelay: '.5s' }}
+            role="tablist"
+            aria-label="Hero frames"
+          >
+            {slides.map((slide, i) => {
+              const isActive = i === activeIndex;
+              return (
+                <button
+                  key={i}
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveIndex(i)}
+                  className={`gf-frame-tile ${isActive ? 'is-active' : ''}`}
+                >
+                  <span className="gf-frame-num">
+                    {String(i + 1).padStart(2, '0')} / 03
+                  </span>
+                  <span className="gf-frame-tag">{slide.tag}</span>
+                  {isActive && (
+                    <span
+                      key={`fill-${activeIndex}`}
+                      className="gf-frame-fill"
+                      style={{ animationDuration: `${ROTATE_MS}ms` }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Capability strip */}
+          <div className="gf-rise mt-10 pt-6 border-t flex flex-wrap items-center gap-x-10 gap-y-3"
+            style={{ borderColor: 'var(--border)', animationDelay: '.6s' }}>
+            <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--dim)', letterSpacing: '0.18em' }}>
+              CORE CAPABILITIES /
+            </span>
+            {capabilities.map((c) => (
+              <span key={c} style={{ fontFamily: 'var(--mono)', fontSize: 13 }} className="text-white/80">
+                {c}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────
+ * Intro statement — verbatim mission line from groowfuse.com
+ * ──────────────────────────────────────────────────────────── */
+
+function Intro() {
+  const [ref, shown] = useReveal();
+  return (
+    <section ref={ref} className="relative border-t" style={{ borderColor: 'var(--border)' }}>
+      <div className="max-w-[1280px] mx-auto px-6 lg:px-10 py-28 lg:py-36 grid lg:grid-cols-12 gap-10 lg:gap-16">
+        <div className={`gf-reveal ${shown ? 'is-shown' : ''} lg:col-span-3`}>
+          <span className="gf-eyebrow">Mission</span>
+        </div>
+        <p className={`gf-reveal gf-reveal-1 ${shown ? 'is-shown' : ''} lg:col-span-9`}
+          style={{
+            fontFamily: 'var(--serif)',
+            fontStyle: 'italic',
+            fontSize: 'clamp(24px, 2.8vw, 38px)',
+            lineHeight: 1.3,
+            letterSpacing: '-0.015em',
+            color: 'var(--text)',
+          }}>
+          Groow Fuse Consult provides comprehensive business support to help organizations
+          navigate the digital transformation landscape.
+        </p>
       </div>
     </section>
   );
@@ -525,48 +834,36 @@ function Services() {
     {
       n: '01',
       title: 'Business Process Improvement & Analysis',
-      desc: 'We help SMEs streamline operations by identifying bottlenecks, reducing delays, and eliminating inefficient manual processes.',
-      points: [
-        'Process mapping & workflow analysis',
-        'Bottleneck identification',
-        'SOP development',
-        'Requirements gathering',
-        'Team accountability & handoffs',
-      ],
-      href: '/services#process',
+      // Verbatim from groowfuse.com home
+      desc: 'We help businesses reduce delays, manual work, and inefficiencies by reviewing and redesigning their business processes for peak performance.',
+      href: '/services',
     },
     {
       n: '02',
-      title: 'IT Procurement & Digital Transformation',
-      desc: 'We help growing businesses make smarter technology decisions — selecting the right tools, systems, and vendors without overspending.',
-      points: [
-        'Software & vendor selection',
-        'Procurement strategy',
-        'Cost optimisation',
-        'Transformation roadmap',
-        'Workflow automation',
-      ],
-      href: '/services#procurement',
+      title: 'IT Procurement Advisory & Digital Transformation',
+      // Verbatim from groowfuse.com home
+      desc: 'We help growing companies choose the right business tools without wasting money, guiding smart technology investments from evaluation to implementation.',
+      href: '/services',
     },
   ];
 
   return (
-    <section ref={ref} className="relative py-32 border-t" style={{ borderColor: 'var(--border)' }}>
+    <section ref={ref} className="relative py-40 border-t" style={{ borderColor: 'var(--border)' }}>
       <div className="max-w-[1280px] mx-auto px-6 lg:px-10">
         <div className={`gf-reveal ${shown ? 'is-shown' : ''}`}>
           <span className="gf-eyebrow">01 — Services</span>
         </div>
-        <h2 className={`gf-reveal gf-reveal-1 ${shown ? 'is-shown' : ''} gf-h2 mt-6 max-w-[20ch]`}>
-          Specialized <span className="gf-serif" style={{ color: 'var(--green)' }}>consulting</span>, built around your business.
+        <h2 className={`gf-reveal gf-reveal-1 ${shown ? 'is-shown' : ''} gf-h2 mt-8 max-w-[20ch]`}>
+          Specialized <span className="gf-serif" style={{ color: 'var(--green)' }}>Consulting</span> Services
         </h2>
 
         {/* 1px-gap grid */}
-        <div className="mt-20 grid lg:grid-cols-2 gap-px"
+        <div className="mt-24 grid lg:grid-cols-2 gap-px"
           style={{ background: 'var(--border)', border: '1px solid var(--border)' }}>
           {services.map((s, i) => (
             <article
               key={s.n}
-              className={`gf-card gf-reveal gf-reveal-${i + 2} ${shown ? 'is-shown' : ''} relative p-10 lg:p-12`}
+              className={`gf-card gf-reveal gf-reveal-${i + 2} ${shown ? 'is-shown' : ''} relative p-12 lg:p-16`}
               style={{ background: 'var(--bg)' }}
             >
               {/* Corner brackets */}
@@ -575,7 +872,7 @@ function Services() {
               <span className="absolute bottom-4 left-4" style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--dim)' }}>└</span>
               <span className="absolute bottom-4 right-4" style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--dim)' }}>┘</span>
 
-              <div className="flex items-center justify-between mb-10">
+              <div className="flex items-center justify-between mb-12">
                 <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--green)', letterSpacing: '0.2em' }}>
                   / {s.n}
                 </span>
@@ -585,24 +882,15 @@ function Services() {
                 </span>
               </div>
 
-              <h3 className="text-[28px] md:text-[32px] leading-tight tracking-tight font-medium max-w-[22ch]">
+              <h3 className="text-[22px] md:text-[26px] leading-tight tracking-tight font-medium max-w-[22ch]">
                 {s.title}
               </h3>
-              <p className="mt-5 text-[15px] leading-relaxed max-w-[48ch]" style={{ color: 'var(--muted)' }}>
+              <p className="mt-6 text-[15px] leading-relaxed max-w-[48ch]" style={{ color: 'var(--muted)' }}>
                 {s.desc}
               </p>
 
-              <ul className="mt-10 space-y-3">
-                {s.points.map((p) => (
-                  <li key={p} className="flex items-baseline gap-3 text-[14px]">
-                    <span style={{ color: 'var(--green)', fontFamily: 'var(--mono)' }}>→</span>
-                    <span style={{ color: 'var(--text)' }}>{p}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <a href={s.href} className="gf-link mt-10 text-[14px] font-medium">
-                Read more
+              <a href={s.href} className="gf-link mt-14 text-[14px] font-medium" style={{ display: 'inline-flex' }}>
+                Learn more
                 <span aria-hidden>↗</span>
               </a>
             </article>
@@ -622,46 +910,46 @@ function Differentiators() {
   const items = [
     {
       n: '01',
-      title: 'Built on standards',
-      body: 'Top industry standards across multiple sectors. Reliable, secure, aligned with the practices that drive growth.',
+      title: 'What Makes Us Different',
+      // Verbatim from groowfuse.com
+      body: 'We are built on top industry standards across multiple sectors, ensuring our work is reliable, secure, and aligned with the best practices that drive growth.',
     },
     {
       n: '02',
-      title: 'Measurable expertise',
-      body: 'Outcomes that are dependable and meet the highest professional standards — technology as a catalyst for value.',
+      title: 'Expertise',
+      body: 'We deliver outcomes that are measurable, dependable, and meet the highest professional standards, ensuring your technology acts as a catalyst for value.',
     },
     {
       n: '03',
-      title: 'Built to evolve',
-      body: 'Systems and processes designed to scale seamlessly as your business expands into new markets.',
+      title: 'Built to Evolve',
+      body: 'Our approach supports growth and change, creating systems and processes that scale seamlessly as your business or organization expands into new markets.',
     },
     {
       n: '04',
-      title: 'Future-proof growth',
-      body: 'Adaptable frameworks designed to remain relevant in a changing digital landscape, protecting your investment.',
+      title: 'Future-Proof Growth',
+      body: 'We create adaptable frameworks designed to remain relevant in a changing digital landscape, protecting your investment for the long term.',
     },
   ];
 
   return (
-    <section ref={ref} className="relative py-32 overflow-hidden" style={{ background: 'var(--surface)' }}>
+    <section ref={ref} className="relative py-40 overflow-hidden" style={{ background: 'var(--surface)' }}>
       <div className="absolute inset-0 gf-grid-dense opacity-30 pointer-events-none" />
       <div className="absolute inset-x-0 top-0 h-px"
         style={{ background: 'linear-gradient(to right, transparent, var(--green), transparent)' }} />
 
       <div className="relative max-w-[1280px] mx-auto px-6 lg:px-10">
-        <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 mb-20">
-          <div className={`gf-reveal ${shown ? 'is-shown' : ''} lg:col-span-5`}>
+        <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 mb-24">
+          <div className={`gf-reveal ${shown ? 'is-shown' : ''} lg:col-span-6`}>
             <span className="gf-eyebrow">02 — Why us</span>
-            <h2 className="gf-h2 mt-6">
-              Practical <span className="gf-serif" style={{ color: 'var(--green)' }}>solutions</span>.<br />
-              Premium <span className="gf-serif">outcomes</span>.
+            <h2 className="gf-h2 mt-8">
+              Providing <span className="gf-serif" style={{ color: 'var(--green)' }}>Top-Notch</span> Solutions At <span className="gf-serif">Affordable</span> Rates
             </h2>
           </div>
-          <div className={`gf-reveal gf-reveal-1 ${shown ? 'is-shown' : ''} lg:col-span-6 lg:col-start-7 flex items-end`}>
-            <p className="text-[16px] md:text-[18px] leading-relaxed" style={{ color: 'var(--muted)' }}>
-              Exceptional technology shouldn't come at a premium cost. We deliver high-quality,
-              enterprise-grade solutions that are practical, efficient, and built around your
-              unique business needs.
+          <div className={`gf-reveal gf-reveal-1 ${shown ? 'is-shown' : ''} lg:col-span-5 lg:col-start-8 flex items-end`}>
+            <p className="text-[15px] md:text-[17px] leading-relaxed" style={{ color: 'var(--muted)' }}>
+              At GroowFuse, we believe exceptional technology shouldn't come at a premium cost.
+              We deliver high-quality, enterprise-grade technology solutions that are practical,
+              efficient, and built around your unique business needs.
             </p>
           </div>
         </div>
@@ -671,15 +959,15 @@ function Differentiators() {
           {items.map((it, i) => (
             <div
               key={it.n}
-              className={`gf-card gf-reveal gf-reveal-${(i % 4) + 1} ${shown ? 'is-shown' : ''} p-8 relative`}
+              className={`gf-card gf-reveal gf-reveal-${(i % 4) + 1} ${shown ? 'is-shown' : ''} p-10 relative`}
               style={{ background: 'var(--surface)' }}
             >
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-8">
                 <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--green)' }}>{it.n}</span>
                 <DiffIcon i={i} />
               </div>
-              <h3 className="text-[20px] font-medium tracking-tight">{it.title}</h3>
-              <p className="mt-3 text-[14px] leading-relaxed" style={{ color: 'var(--muted)' }}>{it.body}</p>
+              <h3 className="text-[18px] font-medium tracking-tight">{it.title}</h3>
+              <p className="mt-4 text-[14px] leading-relaxed" style={{ color: 'var(--muted)' }}>{it.body}</p>
             </div>
           ))}
         </div>
@@ -724,7 +1012,32 @@ function DiffIcon({ i }) {
 function FinalCTA() {
   const [ref, shown] = useReveal();
   return (
-    <section ref={ref} className="relative py-40 overflow-hidden">
+    <section ref={ref} className="relative py-48 overflow-hidden">
+      {/*
+        Background image — treated heavily to fit the dark IT aesthetic.
+        Echoes the original site's "Customer Satisfaction" handshake section.
+        Swap the URL with a real client/team photo when ready (1920x1080+ works best).
+      */}
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1920&q=80')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: 0.18,
+          filter: 'grayscale(100%) contrast(1.1)',
+        }}
+      />
+      {/* Dark base + green wash */}
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(10,10,11,0.88) 0%, rgba(10,10,11,0.78) 50%, rgba(10,10,11,0.95) 100%), radial-gradient(ellipse at center, rgba(31,224,122,0.10), transparent 60%)',
+        }}
+      />
       <div className="absolute inset-0 gf-grid-dense opacity-40 pointer-events-none" />
       <div
         aria-hidden
@@ -738,20 +1051,24 @@ function FinalCTA() {
       />
       <div className="relative max-w-[1100px] mx-auto px-6 lg:px-10 text-center">
         <div className={`gf-reveal ${shown ? 'is-shown' : ''} flex justify-center`}>
-          <span className="gf-eyebrow">Ready when you are</span>
+          <span className="gf-eyebrow">Trust &amp; Partnership</span>
         </div>
-        <h2 className={`gf-reveal gf-reveal-1 ${shown ? 'is-shown' : ''} mt-8`}
-          style={{ fontSize: 'clamp(44px, 7vw, 96px)', lineHeight: 0.95, letterSpacing: '-0.04em', fontWeight: 500 }}>
-          Let's build something <span className="gf-serif" style={{ color: 'var(--green)' }}>resilient</span>.
+        {/* Verbatim heading */}
+        <h2 className={`gf-reveal gf-reveal-1 ${shown ? 'is-shown' : ''} mt-10`}
+          style={{ fontSize: 'clamp(36px, 5.6vw, 76px)', lineHeight: 1.0, letterSpacing: '-0.035em', fontWeight: 500 }}>
+          Customer <span className="gf-serif" style={{ color: 'var(--green)' }}>Satisfaction</span> Guaranteed
         </h2>
-        <p className={`gf-reveal gf-reveal-2 ${shown ? 'is-shown' : ''} mt-8 max-w-[58ch] mx-auto text-[17px] leading-relaxed`}
+        {/* Verbatim body */}
+        <p className={`gf-reveal gf-reveal-2 ${shown ? 'is-shown' : ''} mt-10 max-w-[58ch] mx-auto text-[16px] md:text-[17px] leading-relaxed`}
           style={{ color: 'var(--muted)' }}>
-          Trust is built through results and relationships. Partner with GroowFuse and benefit
-          from our expertise and commitment to your success.
+          At GroowFuse, our focus on customer satisfaction is key to our business.
+          We believe trust is built through results and relationships. Partnering with
+          GroowFuse means benefiting from our expertise and commitment to your success.
         </p>
-        <div className={`gf-reveal gf-reveal-3 ${shown ? 'is-shown' : ''} mt-12 flex flex-wrap gap-3 justify-center`}>
+        <div className={`gf-reveal gf-reveal-3 ${shown ? 'is-shown' : ''} mt-14 flex flex-wrap gap-3 justify-center`}>
+          {/* Verbatim button label */}
           <a href="/contact" className="gf-btn-primary px-8 py-4 rounded-md text-[15px] inline-flex items-center gap-2 tracking-tight">
-            Book a Consultation
+            Let's Get Started
             <span aria-hidden>→</span>
           </a>
           <a href="mailto:info@groowfuse.com" className="gf-btn-ghost px-8 py-4 rounded-md text-[15px] font-medium inline-flex items-center gap-2 tracking-tight">
@@ -891,11 +1208,12 @@ function Footer() {
 
         <div className="mt-20 pt-8 border-t flex flex-wrap justify-between gap-4"
           style={{ borderColor: 'var(--border)' }}>
+          {/* Verbatim copyright from groowfuse.com */}
           <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--dim)' }}>
-            © 2026 Groow Fuse Consult — All rights reserved
+            © 2026, Groow Fuse Consult, All Rights Reserved
           </span>
           <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--dim)' }}>
-            Designed for growth. Built for resilience.
+            Email: info@groowfuse.com
           </span>
         </div>
       </div>
