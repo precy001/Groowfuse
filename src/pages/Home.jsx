@@ -187,12 +187,13 @@ function GfStyles() {
       @keyframes gfBlink { 50% { opacity: 0; } }
       .gf-caret {
         display: inline-block;
-        width: 0.5em; height: 0.9em;
+        width: 0.42em; height: 0.7em;
         background: var(--green);
-        margin-left: 8px;
+        margin-left: 6px;
         transform: translateY(-2px);
         animation: gfBlink 1s steps(2, start) infinite;
-        box-shadow: 0 0 24px var(--green-soft);
+        box-shadow: 0 0 18px var(--green-soft);
+        vertical-align: baseline;
       }
 
       /* Float */
@@ -298,8 +299,8 @@ function GfStyles() {
 
       /* Headline scaling */
       .gf-h1 {
-        font-size: clamp(46px, 7.6vw, 104px);
-        line-height: 0.96;
+        font-size: clamp(44px, 7.2vw, 96px);
+        line-height: 0.98;
         letter-spacing: -0.035em;
         font-weight: 500;
       }
@@ -370,7 +371,7 @@ function GfStyles() {
       .gf-frame-tile {
         background: var(--bg);
         border: 0;
-        padding: 22px 28px;
+        padding: 18px 22px;
         text-align: left;
         position: relative;
         cursor: pointer;
@@ -395,7 +396,7 @@ function GfStyles() {
         font-size: 11px;
         color: var(--dim);
         letter-spacing: 0.22em;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         transition: color 0.4s ease;
       }
       .gf-frame-tag {
@@ -444,20 +445,20 @@ function GfStyles() {
         width: 100%;
         max-width: 1280px;
         margin: 0 auto;
-        padding: 110px 24px 32px;
+        padding: 96px 24px 24px;
         display: flex;
         flex-direction: column;
         min-height: 0;          /* allow flex children to shrink */
       }
       @media (min-width: 1024px) {
-        .gf-hero-inner { padding: 120px 40px 40px; }
+        .gf-hero-inner { padding: 104px 40px 32px; }
       }
       .gf-hero-center {
         flex: 1;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        padding: 32px 0;
+        padding: 16px 0;
         min-height: 0;
       }
       /* Background image — swap the URL for your final hero asset.
@@ -486,13 +487,20 @@ function GfStyles() {
       }
 
       /* On short viewports, ease up vertical padding so it still fits */
+      @media (max-height: 860px) {
+        .gf-hero-inner { padding: 88px 24px 20px; }
+        .gf-hero-center { padding: 12px 0; }
+      }
+      @media (min-width: 1024px) and (max-height: 860px) {
+        .gf-hero-inner { padding: 92px 40px 24px; }
+      }
       @media (max-height: 720px) {
-        .gf-hero-inner { padding-top: 96px; padding-bottom: 24px; }
-        .gf-hero-center { padding: 24px 0; }
+        .gf-hero-inner { padding: 80px 24px 16px; }
+        .gf-hero-center { padding: 8px 0; }
+        .gf-frame-tile { padding: 14px 18px; }
       }
       @media (max-height: 600px) {
-        .gf-hero-inner { padding-top: 88px; padding-bottom: 16px; }
-        .gf-hero-center { padding: 16px 0; }
+        .gf-hero-inner { padding: 72px 24px 12px; }
       }
     `}</style>
   );
@@ -606,8 +614,10 @@ function Hero() {
       headline: (
         <>
           Experience You Can{' '}
-          <span className="gf-serif" style={{ color: 'var(--green)' }}>Trust</span>.
-          <span className="gf-caret" />
+          <span style={{ whiteSpace: 'nowrap' }}>
+            <span className="gf-serif" style={{ color: 'var(--green)' }}>Trust</span>.
+            <span className="gf-caret" />
+          </span>
         </>
       ),
       sub: 'Empowering your business with innovative IT strategies that bridge the gap between technology and vision.',
@@ -619,8 +629,11 @@ function Hero() {
       headline: (
         <>
           Grow <span className="gf-serif" style={{ color: 'var(--green)' }}>Faster</span>{' '}
-          &amp; <span className="gf-serif" style={{ color: 'var(--green)' }}>Safer</span>.
-          <span className="gf-caret" />
+          &amp;{' '}
+          <span style={{ whiteSpace: 'nowrap' }}>
+            <span className="gf-serif" style={{ color: 'var(--green)' }}>Safer</span>.
+            <span className="gf-caret" />
+          </span>
         </>
       ),
       sub: 'We help organizations of all sizes implement smarter, secure, and future-proof digital infrastructures.',
@@ -631,8 +644,11 @@ function Hero() {
       tag: 'DIGITAL',
       headline: (
         <>
-          Digital <span className="gf-serif" style={{ color: 'var(--green)' }}>Transformation</span>.
-          <span className="gf-caret" />
+          Digital{' '}
+          <span style={{ whiteSpace: 'nowrap' }}>
+            <span className="gf-serif" style={{ color: 'var(--green)' }}>Transformation</span>.
+            <span className="gf-caret" />
+          </span>
         </>
       ),
       sub: 'Specialized Business Analysis and Data Management to keep your business resilient.',
@@ -710,14 +726,14 @@ function Hero() {
                   className={`gf-slide ${isActive ? 'is-active' : ''}`}
                   aria-hidden={!isActive}
                 >
-                  <h2 className="gf-h2" style={{ maxWidth: '17ch' }}>
+                  <h1 className="gf-h1" style={{ maxWidth: '20ch' }}>
                     {slide.headline}
-                  </h2>
-                  <p className="mt-10 max-w-[58ch] text-[17px] md:text-[19px] leading-relaxed"
+                  </h1>
+                  <p className="mt-8 max-w-[58ch] text-[16px] md:text-[18px] leading-relaxed"
                     style={{ color: 'var(--muted)' }}>
                     {slide.sub}
                   </p>
-                  <div className="mt-12 flex flex-wrap gap-3">
+                  <div className="mt-10 flex flex-wrap gap-3">
                     <a
                       href={slide.primary.href}
                       tabIndex={isActive ? 0 : -1}
@@ -777,13 +793,13 @@ function Hero() {
           </div>
 
           {/* Capability strip */}
-          <div className="gf-rise mt-10 pt-6 border-t flex flex-wrap items-center gap-x-10 gap-y-3"
+          <div className="gf-rise mt-8 pt-5 border-t flex flex-wrap items-center gap-x-8 gap-y-3"
             style={{ borderColor: 'var(--border)', animationDelay: '.6s' }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--dim)', letterSpacing: '0.18em' }}>
+            <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--dim)', letterSpacing: '0.18em' }}>
               CORE CAPABILITIES /
             </span>
             {capabilities.map((c) => (
-              <span key={c} style={{ fontFamily: 'var(--mono)', fontSize: 13 }} className="text-white/80">
+              <span key={c} style={{ fontFamily: 'var(--mono)', fontSize: 12 }} className="text-white/80">
                 {c}
               </span>
             ))}
