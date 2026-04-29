@@ -89,19 +89,17 @@ function ServicesHero() {
         {/* CENTER */}
         <div className="gf-hero-center">
           <div className="gf-rise" style={{ animationDelay: '.15s' }}>
-            <h1 className="gf-h1" style={{ maxWidth: '20ch' }}>
-              Two services.{' '}
+            <h1 className="gf-h1" style={{ maxWidth: '14ch' }}>
+              Our{' '}
               <span style={{ whiteSpace: 'nowrap' }}>
-                <span className="gf-serif" style={{ color: 'var(--green)' }}>One</span>{' '}
-                <span className="gf-serif" style={{ color: 'var(--green)' }}>standard</span>.
+                <span className="gf-serif" style={{ color: 'var(--green)' }}>Services</span>.
                 <span className="gf-caret" />
               </span>
             </h1>
             <p className="mt-8 max-w-[60ch] text-[16px] md:text-[18px] leading-relaxed"
               style={{ color: 'var(--muted)' }}>
-              Specialized consulting designed to help growing businesses work smarter,
-              reduce inefficiency, and make better technology decisions — without the
-              enterprise price tag.
+              Expert solutions designed to help growing businesses work smarter,
+              reduce inefficiency, and make better technology decisions.
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
               <a
@@ -127,11 +125,15 @@ function ServicesHero() {
           <div className="gf-tag-strip">
             <a href="#service-01" className="gf-frame-tile" style={{ background: 'var(--bg)' }}>
               <span className="gf-frame-num">01 / 02</span>
-              <span className="gf-frame-tag">PROCESS · ANALYSIS</span>
+              <span className="gf-frame-tag" style={{ letterSpacing: '0.04em', textTransform: 'none' }}>
+                Business Process Improvement &amp; Business Analysis
+              </span>
             </a>
             <a href="#service-02" className="gf-frame-tile" style={{ background: 'var(--bg)' }}>
               <span className="gf-frame-num">02 / 02</span>
-              <span className="gf-frame-tag">PROCUREMENT · DIGITAL</span>
+              <span className="gf-frame-tag" style={{ letterSpacing: '0.04em', textTransform: 'none' }}>
+                IT Procurement Advisory &amp; Digital Transformation
+              </span>
             </a>
           </div>
         </div>
@@ -146,9 +148,9 @@ function ServicesHero() {
 
 const SERVICES = [
   {
-    id: 'service-01',
+    tag: 'OFFERING',
     n: '01',
-    tag: 'PROCESS · ANALYSIS',
+    id: 'service-01',
     title: (
       <>
         Business Process Improvement &amp;{' '}
@@ -175,9 +177,9 @@ const SERVICES = [
     imageRight: true,
   },
   {
-    id: 'service-02',
+    tag: 'OFFERING',
     n: '02',
-    tag: 'PROCUREMENT · DIGITAL',
+    id: 'service-02',
     title: (
       <>
         IT Procurement Advisory &amp;{' '}
