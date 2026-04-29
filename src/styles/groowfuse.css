@@ -598,41 +598,57 @@ section[id]:target::before {
   gap: 28px;
 }
 
-/* Slow rotation on the whole mark */
+/* Brand mark — gentle breathing scale on the whole svg */
 .gf-loader-mark {
-  animation: gfLoaderRotate 6s linear infinite;
+  animation: gfLoaderBreathe 3.6s cubic-bezier(.4, 0, .2, 1) infinite;
+  transform-origin: 32px 32px;
 }
-@keyframes gfLoaderRotate {
-  to { transform: rotate(360deg); }
-}
-
-/* Outer circle draws itself */
-.gf-loader-circle {
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
-  animation: gfLoaderDraw 1.6s cubic-bezier(.4, 0, .2, 1) forwards;
-}
-@keyframes gfLoaderDraw {
-  to { stroke-dashoffset: 0; }
+@keyframes gfLoaderBreathe {
+  0%, 100% { transform: scale(1);    }
+  50%      { transform: scale(1.04); }
 }
 
-/* Crosshair fades in after the circle has started drawing */
-.gf-loader-cross {
+/* Leaf — fades in first, then sways with a subtle origin tilt */
+.gf-loader-leaf {
   opacity: 0;
-  animation: gfLoaderFadeIn 0.6s ease 0.55s forwards;
+  transform-origin: 37px 38px;
+  animation:
+    gfLoaderFadeIn 0.6s cubic-bezier(.4, 0, .2, 1) 0.05s forwards,
+    gfLoaderSway 4s ease-in-out 0.6s infinite;
 }
 @keyframes gfLoaderFadeIn {
   to { opacity: 1; }
 }
-
-/* Center dot gently pulses */
-.gf-loader-dot {
-  transform-origin: 28px 28px;
-  animation: gfLoaderPulse 1.6s cubic-bezier(.4, 0, .2, 1) infinite;
+@keyframes gfLoaderSway {
+  0%, 100% { transform: rotate(-2deg); }
+  50%      { transform: rotate(3deg);  }
 }
-@keyframes gfLoaderPulse {
-  0%, 100% { transform: scale(1);   opacity: 1; }
-  50%      { transform: scale(0.7); opacity: 0.6; }
+
+/* Stem fades in alongside the leaf */
+.gf-loader-stem {
+  opacity: 0;
+  animation: gfLoaderStemIn 0.5s ease 0.35s forwards;
+}
+@keyframes gfLoaderStemIn {
+  to { opacity: 0.5; }
+}
+
+/* Infinity — draws itself, then loops with a moving dash highlight */
+.gf-loader-infinity {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation:
+    gfLoaderDraw 1.4s cubic-bezier(.4, 0, .2, 1) 0.55s forwards,
+    gfLoaderInfinityFlow 2.4s linear 1.95s infinite;
+}
+@keyframes gfLoaderDraw {
+  to { stroke-dashoffset: 0; }
+}
+/* Once drawn, the dash pattern subtly shifts to suggest perpetual motion */
+@keyframes gfLoaderInfinityFlow {
+  0%   { stroke-dasharray: 200; stroke-dashoffset: 0;    opacity: 1;   }
+  50%  { stroke-dasharray: 8 6;  stroke-dashoffset: -14; opacity: 0.85; }
+  100% { stroke-dasharray: 200; stroke-dashoffset: 0;    opacity: 1;   }
 }
 
 /* "INITIALIZING" — soft breathing opacity */
@@ -651,18 +667,19 @@ section[id]:target::before {
   50%      { opacity: 1; }
 }
 
-/* Reduced motion — hold the mark still, dim the text steadily */
+/* Reduced motion — show the mark statically */
 @media (prefers-reduced-motion: reduce) {
   .gf-loader-mark,
-  .gf-loader-circle,
-  .gf-loader-cross,
-  .gf-loader-dot,
+  .gf-loader-leaf,
+  .gf-loader-stem,
+  .gf-loader-infinity,
   .gf-loader-text {
     animation: none;
   }
-  .gf-loader-circle { stroke-dashoffset: 0; }
-  .gf-loader-cross  { opacity: 1; }
-  .gf-loader-text   { opacity: 0.85; }
+  .gf-loader-leaf     { opacity: 1; }
+  .gf-loader-stem     { opacity: 0.5; }
+  .gf-loader-infinity { stroke-dashoffset: 0; }
+  .gf-loader-text     { opacity: 0.85; }
 }
 
 /* ────────────────────────────────────────────────────────────

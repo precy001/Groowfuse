@@ -37,11 +37,8 @@ export default function Nav() {
   return (
     <header className={`gf-nav fixed top-0 inset-x-0 z-50 border-b border-transparent ${scrolled ? 'is-scrolled' : ''}`}>
       <nav className="max-w-[1280px] mx-auto px-6 lg:px-10 h-[72px] flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-3">
-          <Logo />
-          <span className="text-[15px] tracking-tight font-medium">
-            Groow<span style={{ color: 'var(--green)' }}>Fuse</span>
-          </span>
+        <Link to="/" className="flex items-center" aria-label="GroowFuse home">
+          <Logo size={32} withWord />
         </Link>
 
         <ul

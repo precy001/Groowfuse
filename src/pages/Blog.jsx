@@ -15,6 +15,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
+import SEO from '../components/SEO';
 import { useReveal, useMouseGlow } from '../lib/hooks';
 import { POSTS, CATEGORIES, formatDate } from '../data/posts';
 
@@ -34,8 +35,37 @@ export default function Blog() {
       .sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [activeCategory, featured.slug]);
 
+  // Blog index structured data — surfaces all posts to crawlers in one shot
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    'name': 'GroowFuse — Insights',
+    'url': 'https://groowfuse.com/blog',
+    'description': 'Field notes from the engagements we run — on procurement, process, automation, and digital transformation.',
+    'publisher': {
+      '@type': 'Organization',
+      'name': 'GroowFuse Consult',
+      'url': 'https://groowfuse.com',
+    },
+    'blogPost': POSTS.map((p) => ({
+      '@type': 'BlogPosting',
+      'headline': p.title,
+      'description': p.excerpt,
+      'datePublished': p.date,
+      'url': `https://groowfuse.com/blog/${p.slug}`,
+      'author': { '@type': 'Organization', 'name': p.author.name },
+    })),
+  };
+
   return (
     <div className="gf-root">
+      <SEO
+        title="Insights"
+        description="Practical insights for SME leaders — field notes on procurement, process, automation, and digital transformation. No fluff, no vendor pitches."
+        url="https://groowfuse.com/blog"
+        jsonLd={jsonLd}
+        jsonLdId="blog"
+      />
       <Nav />
       <BlogHero
         activeCategory={activeCategory}

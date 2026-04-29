@@ -14,11 +14,33 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
+import SEO from '../components/SEO';
 import { useReveal, useMouseGlow } from '../lib/hooks';
 
 export default function About() {
+  // FAQ structured data — helps Google show our questions in search rich results
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    'mainEntity': FAQ_ITEMS.map((item) => ({
+      '@type': 'Question',
+      'name': item.q,
+      'acceptedAnswer': {
+        '@type': 'Answer',
+        'text': item.a,
+      },
+    })),
+  };
+
   return (
     <div className="gf-root">
+      <SEO
+        title="About"
+        description="GroowFuse is an IT consultancy that helps businesses grow with technology, not struggle through it. Strategic solutions that bridge ambition and execution."
+        url="https://groowfuse.com/about"
+        jsonLd={faqJsonLd}
+        jsonLdId="faq"
+      />
       <Nav />
       <AboutHero />
       <VisionMission />

@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams, Navigate } from 'react-router-dom';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
+import SEO from '../components/SEO';
 import { useReveal } from '../lib/hooks';
 import { getPostBySlug, getRelatedPosts, formatDate } from '../data/posts';
 import { BookmarkIcon } from './Blog';
@@ -29,9 +30,53 @@ export default function BlogPost() {
   }
 
   const related = getRelatedPosts(post.slug, 3);
+  const articleUrl = `https://groowfuse.com/blog/${post.slug}`;
+
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    'headline': post.title,
+    'description': post.excerpt,
+    'image': post.coverImage,
+    'datePublished': post.date,
+    'dateModified': post.date,
+    'author': {
+      '@type': 'Organization',
+      'name': post.author.name,
+      'url': 'https://groowfuse.com',
+    },
+    'publisher': {
+      '@type': 'Organization',
+      'name': 'GroowFuse Consult',
+      'logo': {
+        '@type': 'ImageObject',
+        'url': 'https://groowfuse.com/logo.png',
+      },
+    },
+    'mainEntityOfPage': {
+      '@type': 'WebPage',
+      '@id': articleUrl,
+    },
+    'articleSection': post.category.label,
+    'keywords': post.tags?.join(', '),
+  };
 
   return (
     <div className="gf-root">
+      <SEO
+        title={post.title}
+        description={post.excerpt}
+        url={articleUrl}
+        image={post.coverImage}
+        type="article"
+        publishedTime={new Date(post.date).toISOString()}
+        modifiedTime={new Date(post.date).toISOString()}
+        author={post.author.name}
+        section={post.category.label}
+        tags={post.tags}
+        jsonLd={articleJsonLd}
+        jsonLdId="article"
+      />
       <Nav />
       <ArticleHero post={post} />
       <ArticleBody post={post} />

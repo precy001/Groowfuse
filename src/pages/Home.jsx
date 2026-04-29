@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
+import SEO from '../components/SEO';
 import { useReveal, useMouseGlow } from '../lib/hooks';
 
 /* ────────────────────────────────────────────────────────────
@@ -18,6 +19,11 @@ import { useReveal, useMouseGlow } from '../lib/hooks';
 export default function Home() {
   return (
     <div className="gf-root">
+      <SEO
+        title={null}
+        description="Practical, enterprise-grade IT consulting for growing businesses. Smarter processes, smarter procurement, stronger digital foundations."
+        url="https://groowfuse.com/"
+      />
       <Nav />
       <Hero />
       <Intro />

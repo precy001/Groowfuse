@@ -17,11 +17,38 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
+import SEO from '../components/SEO';
 import { useReveal, useMouseGlow } from '../lib/hooks';
 
 export default function Contact() {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ContactPage',
+    'name': 'Contact GroowFuse Consult',
+    'url': 'https://groowfuse.com/contact',
+    'mainEntity': {
+      '@type': 'Organization',
+      'name': 'GroowFuse Consult',
+      'email': 'info@groowfuse.com',
+      'address': {
+        '@type': 'PostalAddress',
+        'streetAddress': '77 Camden Street Lower',
+        'addressLocality': 'Dublin',
+        'postalCode': 'D02 XE80',
+        'addressCountry': 'IE',
+      },
+    },
+  };
+
   return (
     <div className="gf-root">
+      <SEO
+        title="Contact"
+        description="Ready to elevate your business? Send us a message — we respond within one business day with availability and next steps."
+        url="https://groowfuse.com/contact"
+        jsonLd={jsonLd}
+        jsonLdId="contact"
+      />
       <Nav />
       <ContactHero />
       <ContactSection />

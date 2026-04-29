@@ -14,11 +14,54 @@
 import { Link } from 'react-router-dom';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
+import SEO from '../components/SEO';
 import { useReveal, useMouseGlow } from '../lib/hooks';
 
 export default function Services() {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    'provider': {
+      '@type': 'Organization',
+      'name': 'GroowFuse Consult',
+      'url': 'https://groowfuse.com',
+    },
+    'serviceType': 'IT Consulting',
+    'description': 'Business process improvement, IT procurement advisory, and digital transformation support for SMEs.',
+    'areaServed': 'Worldwide',
+    'hasOfferCatalog': {
+      '@type': 'OfferCatalog',
+      'name': 'Services',
+      'itemListElement': [
+        {
+          '@type': 'Offer',
+          'itemOffered': {
+            '@type': 'Service',
+            'name': 'Business Process Improvement & Business Analysis for SMEs',
+            'description': 'Process mapping, workflow analysis, and operational redesign for growing businesses.',
+          },
+        },
+        {
+          '@type': 'Offer',
+          'itemOffered': {
+            '@type': 'Service',
+            'name': 'IT Procurement Advisory & Digital Transformation Support',
+            'description': 'Software selection, vendor evaluation, and digital transformation roadmaps.',
+          },
+        },
+      ],
+    },
+  };
+
   return (
     <div className="gf-root">
+      <SEO
+        title="Our Services"
+        description="Specialized consulting for growing businesses: business process improvement, IT procurement advisory, and digital transformation support."
+        url="https://groowfuse.com/services"
+        jsonLd={jsonLd}
+        jsonLdId="services"
+      />
       <Nav />
       <ServicesHero />
       <ServiceBlocks />
