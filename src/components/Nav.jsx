@@ -38,7 +38,7 @@ export default function Nav() {
     <header className={`gf-nav fixed top-0 inset-x-0 z-50 border-b border-transparent ${scrolled ? 'is-scrolled' : ''}`}>
       <nav className="max-w-[1280px] mx-auto px-6 lg:px-10 h-[72px] flex items-center justify-between">
         <Link to="/" className="flex items-center" aria-label="GroowFuse home">
-          <Logo size={32} withWord />
+          <Logo height={36} />
         </Link>
 
         <ul

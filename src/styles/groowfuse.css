@@ -600,57 +600,22 @@ section[id]:target::before {
 
 /* Brand mark — gentle breathing scale on the whole svg */
 .gf-loader-mark {
-  animation: gfLoaderBreathe 3.6s cubic-bezier(.4, 0, .2, 1) infinite;
-  transform-origin: 32px 32px;
+  display: inline-flex;
+  animation:
+    gfLoaderFadeIn 0.7s cubic-bezier(.4, 0, .2, 1) forwards,
+    gfLoaderBreathe 3.6s cubic-bezier(.4, 0, .2, 1) 0.7s infinite;
+  filter: drop-shadow(0 0 16px rgba(31, 224, 122, 0.18));
+  opacity: 0;
+}
+@keyframes gfLoaderFadeIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1);    }
 }
 @keyframes gfLoaderBreathe {
   0%, 100% { transform: scale(1);    }
   50%      { transform: scale(1.04); }
 }
-
-/* Leaf — fades in first, then sways with a subtle origin tilt */
-.gf-loader-leaf {
-  opacity: 0;
-  transform-origin: 37px 38px;
-  animation:
-    gfLoaderFadeIn 0.6s cubic-bezier(.4, 0, .2, 1) 0.05s forwards,
-    gfLoaderSway 4s ease-in-out 0.6s infinite;
-}
-@keyframes gfLoaderFadeIn {
-  to { opacity: 1; }
-}
-@keyframes gfLoaderSway {
-  0%, 100% { transform: rotate(-2deg); }
-  50%      { transform: rotate(3deg);  }
-}
-
-/* Stem fades in alongside the leaf */
-.gf-loader-stem {
-  opacity: 0;
-  animation: gfLoaderStemIn 0.5s ease 0.35s forwards;
-}
-@keyframes gfLoaderStemIn {
-  to { opacity: 0.5; }
-}
-
-/* Infinity — draws itself, then loops with a moving dash highlight */
-.gf-loader-infinity {
-  stroke-dasharray: 200;
-  stroke-dashoffset: 200;
-  animation:
-    gfLoaderDraw 1.4s cubic-bezier(.4, 0, .2, 1) 0.55s forwards,
-    gfLoaderInfinityFlow 2.4s linear 1.95s infinite;
-}
-@keyframes gfLoaderDraw {
-  to { stroke-dashoffset: 0; }
-}
-/* Once drawn, the dash pattern subtly shifts to suggest perpetual motion */
-@keyframes gfLoaderInfinityFlow {
-  0%   { stroke-dasharray: 200; stroke-dashoffset: 0;    opacity: 1;   }
-  50%  { stroke-dasharray: 8 6;  stroke-dashoffset: -14; opacity: 0.85; }
-  100% { stroke-dasharray: 200; stroke-dashoffset: 0;    opacity: 1;   }
-}
-
+ 
 /* "INITIALIZING" — soft breathing opacity */
 .gf-loader-text {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -658,7 +623,6 @@ section[id]:target::before {
   letter-spacing: 0.42em;
   color: #1FE07A;
   text-transform: uppercase;
-  /* Visual indent compensates for the trailing letter-spacing on the last glyph */
   padding-left: 0.42em;
   animation: gfLoaderTextPulse 2s ease-in-out infinite;
 }
@@ -666,149 +630,15 @@ section[id]:target::before {
   0%, 100% { opacity: 0.55; }
   50%      { opacity: 1; }
 }
-
+ 
 /* Reduced motion — show the mark statically */
 @media (prefers-reduced-motion: reduce) {
   .gf-loader-mark,
-  .gf-loader-leaf,
-  .gf-loader-stem,
-  .gf-loader-infinity,
   .gf-loader-text {
     animation: none;
   }
-  .gf-loader-leaf     { opacity: 1; }
-  .gf-loader-stem     { opacity: 0.5; }
-  .gf-loader-infinity { stroke-dashoffset: 0; }
-  .gf-loader-text     { opacity: 0.85; }
-}
-
-/* ────────────────────────────────────────────────────────────
- * About page — Vision & Mission grid
- * ──────────────────────────────────────────────────────────── */
-.gf-vm-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1px;
-  background: var(--border);
-}
-@media (min-width: 1024px) {
-  .gf-vm-grid { grid-template-columns: 1fr 1fr; }
-}
-
-/* ────────────────────────────────────────────────────────────
- * About page — FAQ accordion
- * Smooth height animation via grid-template-rows trick.
- * ──────────────────────────────────────────────────────────── */
-.gf-faq-list {
-  border-top: 1px solid var(--border);
-}
-
-.gf-faq-item {
-  border-bottom: 1px solid var(--border);
-  position: relative;
-  transition: background 0.3s ease;
-}
-.gf-faq-item.is-open {
-  background: rgba(255, 255, 255, 0.015);
-}
-
-.gf-faq-q {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 28px 4px;
-  background: none;
-  border: 0;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  font-family: var(--sans);
-  transition: padding 0.3s cubic-bezier(.22,.61,.36,1);
-}
-@media (min-width: 1024px) {
-  .gf-faq-q { padding: 32px 8px; }
-}
-
-.gf-faq-num {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.18em;
-  color: var(--dim);
-  flex-shrink: 0;
-  transition: color 0.3s ease;
-}
-.gf-faq-item.is-open .gf-faq-num { color: var(--green); }
-
-.gf-faq-q-text {
-  flex: 1;
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: -0.005em;
-  line-height: 1.4;
-}
-@media (min-width: 768px) {
-  .gf-faq-q-text { font-size: 18px; }
-}
-
-.gf-faq-chevron {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--border-bright);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  transition: transform 0.4s cubic-bezier(.22,.61,.36,1),
-              color 0.3s ease,
-              border-color 0.3s ease,
-              background 0.3s ease;
-}
-.gf-faq-q:hover .gf-faq-chevron {
-  border-color: var(--green-soft);
-  color: var(--text);
-}
-.gf-faq-item.is-open .gf-faq-chevron {
-  transform: rotate(180deg);
-  color: var(--green);
-  border-color: var(--green-soft);
-  background: rgba(31, 224, 122, 0.06);
-}
-
-/* The grid-rows trick: animate from 0fr to 1fr to expand from height 0 to auto */
-.gf-faq-a-wrap {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.45s cubic-bezier(.22,.61,.36,1);
-}
-.gf-faq-item.is-open .gf-faq-a-wrap {
-  grid-template-rows: 1fr;
-}
-
-.gf-faq-a {
-  overflow: hidden;
-  min-height: 0;
-}
-.gf-faq-a p {
-  padding: 0 4px 28px 60px; /* align under the question text, past the num column */
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.7;
-  color: var(--muted);
-  max-width: 75ch;
-}
-@media (min-width: 1024px) {
-  .gf-faq-a p { padding: 0 8px 36px 64px; font-size: 16px; }
-}
-@media (max-width: 640px) {
-  .gf-faq-a p { padding-left: 4px; padding-bottom: 24px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .gf-faq-a-wrap { transition: none; }
-  .gf-faq-chevron { transition: none; }
+  .gf-loader-mark { opacity: 1; transform: none; }
+  .gf-loader-text { opacity: 0.85; }
 }
 
 /* ────────────────────────────────────────────────────────────

@@ -53,11 +53,8 @@ export default function Footer() {
         <div className="grid lg:grid-cols-12 gap-12">
           {/* Brand + Newsletter */}
           <div className="lg:col-span-6">
-            <div className="flex items-center gap-2">
-              <Logo size={32} withWord />
-              <span className="text-[15px] tracking-tight font-medium" style={{ color: 'var(--muted)' }}>
-                {' '}Consult
-              </span>
+            <div className="flex items-center">
+              <Logo height={40} />
             </div>
             <p className="mt-6 max-w-[42ch] text-[15px] leading-relaxed" style={{ color: 'var(--muted)' }}>
               Practical, enterprise-grade IT consulting for growing businesses.
