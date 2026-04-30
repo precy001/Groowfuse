@@ -10,7 +10,6 @@
  */
 
 import { useEffect, useState } from 'react';
-import Logo from './Logo';
 
 const MIN_DISPLAY_MS = 750;
 const FADE_MS = 450;
@@ -63,9 +62,43 @@ export default function PageLoader() {
       aria-label="Loading"
     >
       <div className="gf-loader-inner">
-        <div className="gf-loader-mark">
-          <Logo height={64} alt="" />
-        </div>
+        <svg
+          className="gf-loader-mark"
+          width="56"
+          height="56"
+          viewBox="0 0 56 56"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          {/* Outer circle — draws itself */}
+          <circle
+            className="gf-loader-circle"
+            cx="28"
+            cy="28"
+            r="26"
+            stroke="#1FE07A"
+            strokeOpacity="0.4"
+            strokeWidth="1"
+            pathLength="100"
+          />
+          {/* Crosshair lines — fade in after the circle starts drawing */}
+          <path
+            className="gf-loader-cross"
+            d="M28 2 L28 16 M28 40 L28 54 M2 28 L16 28 M40 28 L54 28"
+            stroke="#1FE07A"
+            strokeOpacity="0.35"
+            strokeWidth="1"
+          />
+          {/* Inner pulse */}
+          <circle
+            className="gf-loader-dot"
+            cx="28"
+            cy="28"
+            r="7"
+            fill="#1FE07A"
+          />
+        </svg>
         <span className="gf-loader-text">INITIALIZING</span>
       </div>
     </div>

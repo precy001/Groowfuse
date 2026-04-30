@@ -22,6 +22,16 @@ section[id] {
   scroll-margin-top: 88px;
 }
 
+/* ─── Mobile overflow safety net ───
+ * Prevents stray content from causing horizontal scroll. Uses `clip` rather
+ * than `hidden` so position: sticky/fixed children continue to work.
+ * `clip` is supported in all modern browsers; older fallback is `hidden`.
+ */
+html, body {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 .gf-root {
   --bg: #0A0A0B;
   --surface: #101012;
@@ -203,6 +213,37 @@ section[id] {
 .gf-nav-link.is-current { color: var(--text); }
 .gf-nav-link.is-current::after { transform: scaleX(1); background: var(--green); }
 
+/* ─── Brand logo ───
+ * The logo image's glyphs are dark, so it sits inside a white badge to
+ * stay legible against the dark theme. The badge has a small radius and
+ * a soft shadow so it reads as a deliberate brand mark, not pasted on.
+ */
+.gf-logo {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0; /* removes phantom inline-baseline gap */
+}
+.gf-logo-badge {
+  background: #ffffff;
+  padding: 5px 9px;
+  border-radius: 6px;
+  /* Subtle dark-side shadow to anchor the badge to the dark surface */
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 6px 18px -8px rgba(0, 0, 0, 0.55);
+  transition: transform .35s cubic-bezier(.22, .61, .36, 1),
+              box-shadow .35s ease;
+}
+/* Lift slightly on hover when the logo is wrapped by a Link */
+a:hover > .gf-logo-badge,
+button:hover > .gf-logo-badge {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 10px 22px -8px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(31, 224, 122, 0.18);
+}
+
 /* Inputs */
 .gf-input {
   background: transparent;
@@ -219,12 +260,18 @@ section[id] {
   line-height: 0.98;
   letter-spacing: -0.035em;
   font-weight: 500;
+  /* Allow long single words ("Transformation") to break only when nothing
+     else can fit on a line. Won't affect normal multi-word wrapping. */
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 .gf-h2 {
   font-size: clamp(32px, 4.6vw, 56px);
   line-height: 1.04;
   letter-spacing: -0.025em;
   font-weight: 500;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 /* Underline link */
@@ -245,8 +292,21 @@ section[id] {
   to   { transform: translateX(-50%); }
 }
 
+/* Headline mobile scaling — gradually tighter as the screen shrinks */
 @media (max-width: 640px) {
   .gf-h1 { font-size: clamp(38px, 11vw, 64px); }
+}
+@media (max-width: 480px) {
+  .gf-h1 { font-size: clamp(32px, 9vw, 48px); }
+  .gf-h2 { font-size: clamp(26px, 6.8vw, 38px); }
+  /* Eyebrow letter-spacing is heavy at large sizes; ease it on mobile so
+     long multi-word eyebrows fit without pushing past the viewport edge. */
+  .gf-eyebrow { letter-spacing: 0.14em; gap: 8px; }
+}
+@media (max-width: 380px) {
+  .gf-h1 { font-size: clamp(28px, 8vw, 38px); }
+  .gf-h2 { font-size: clamp(22px, 5.6vw, 30px); }
+  .gf-eyebrow { letter-spacing: 0.12em; font-size: 11px; }
 }
 
 /* ─── Hero slide stack (non-carousel) ───
@@ -598,24 +658,44 @@ section[id]:target::before {
   gap: 28px;
 }
 
-/* Brand mark — gentle breathing scale on the whole svg */
+/* Slow rotation on the whole mark */
 .gf-loader-mark {
-  display: inline-flex;
-  animation:
-    gfLoaderFadeIn 0.7s cubic-bezier(.4, 0, .2, 1) forwards,
-    gfLoaderBreathe 3.6s cubic-bezier(.4, 0, .2, 1) 0.7s infinite;
-  filter: drop-shadow(0 0 16px rgba(31, 224, 122, 0.18));
+  display: block;
+  animation: gfLoaderRotate 6s linear infinite;
+}
+@keyframes gfLoaderRotate {
+  to { transform: rotate(360deg); }
+}
+
+/* Outer circle draws itself */
+.gf-loader-circle {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: gfLoaderDraw 1.6s cubic-bezier(.4, 0, .2, 1) forwards;
+}
+@keyframes gfLoaderDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Crosshair fades in after the circle has started drawing */
+.gf-loader-cross {
   opacity: 0;
+  animation: gfLoaderFadeIn 0.6s ease 0.55s forwards;
 }
 @keyframes gfLoaderFadeIn {
-  from { opacity: 0; transform: scale(0.92); }
-  to   { opacity: 1; transform: scale(1);    }
+  to { opacity: 1; }
 }
-@keyframes gfLoaderBreathe {
-  0%, 100% { transform: scale(1);    }
-  50%      { transform: scale(1.04); }
+
+/* Center dot gently pulses */
+.gf-loader-dot {
+  transform-origin: 28px 28px;
+  animation: gfLoaderPulse 1.6s cubic-bezier(.4, 0, .2, 1) infinite;
 }
- 
+@keyframes gfLoaderPulse {
+  0%, 100% { transform: scale(1);   opacity: 1;   }
+  50%      { transform: scale(0.7); opacity: 0.6; }
+}
+
 /* "INITIALIZING" — soft breathing opacity */
 .gf-loader-text {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -630,15 +710,19 @@ section[id]:target::before {
   0%, 100% { opacity: 0.55; }
   50%      { opacity: 1; }
 }
- 
+
 /* Reduced motion — show the mark statically */
 @media (prefers-reduced-motion: reduce) {
   .gf-loader-mark,
+  .gf-loader-circle,
+  .gf-loader-cross,
+  .gf-loader-dot,
   .gf-loader-text {
     animation: none;
   }
-  .gf-loader-mark { opacity: 1; transform: none; }
-  .gf-loader-text { opacity: 0.85; }
+  .gf-loader-circle { stroke-dashoffset: 0; }
+  .gf-loader-cross  { opacity: 1; }
+  .gf-loader-text   { opacity: 0.85; }
 }
 
 /* ────────────────────────────────────────────────────────────

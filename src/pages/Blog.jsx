@@ -141,9 +141,10 @@ function BlogHero({ activeCategory, onCategoryChange }) {
           <div className="gf-rise" style={{ animationDelay: '.15s' }}>
             <h1 className="gf-h1" style={{ maxWidth: '20ch' }}>
               Practical{' '}
+              <span className="gf-serif" style={{ color: 'var(--green)' }}>insights</span>{' '}
+              for SME{' '}
               <span style={{ whiteSpace: 'nowrap' }}>
-                <span className="gf-serif" style={{ color: 'var(--green)' }}>insights</span>{' '}
-                for SME leaders.
+                leaders.
                 <span className="gf-caret" />
               </span>
             </h1>
