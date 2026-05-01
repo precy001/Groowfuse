@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import AdminNav from './components/AdminNav';
+import AdminTour from './components/AdminTour';
 import SEO from '../components/SEO';
 import { MOCK_MESSAGES } from './lib/mock-data';
 
@@ -54,6 +55,9 @@ export default function AdminShell() {
           <Outlet />
         </div>
       </main>
+
+      {/* First-time-user walkthrough — auto-opens once per user, can be replayed */}
+      <AdminTour />
     </div>
   );
 }

@@ -11,6 +11,8 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ConfirmModal from '../components/ConfirmModal';
 import { POSTS, CATEGORIES, formatDate } from '../../data/posts';
+import { logAction } from '../lib/audit-log';
+import { getUser } from '../lib/auth';
 
 export default function Posts() {
   const [query, setQuery] = useState('');
@@ -195,7 +197,13 @@ export default function Posts() {
         open={!!pendingDelete}
         onClose={() => setPendingDelete(null)}
         onConfirm={() => {
-          setFeedback(`"${pendingDelete?.title}" — delete will persist once the backend is wired up.`);
+          logAction('post.delete', {
+            type:  'post',
+            id:    pendingDelete?.slug,
+            label: pendingDelete?.title,
+          });
+          const user = getUser();
+          setFeedback(`Deleted "${pendingDelete?.title}" (by ${user?.email || 'admin'}). Delete will persist once the backend is wired up.`);
         }}
         title="Delete this post?"
         body={

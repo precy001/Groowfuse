@@ -62,6 +62,12 @@ export async function login(email, password) {
   };
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   emit();
+
+  // Log the login. Imported lazily to avoid a circular module load
+  // (audit-log → auth.getUser). At call time the dependency is resolved.
+  const { logAction } = await import('./audit-log');
+  logAction('login', { type: 'session' });
+
   return { ok: true, user: session };
 }
 
@@ -69,6 +75,10 @@ export async function login(email, password) {
  * Clear the session. Always succeeds. Async to match real flow.
  */
 export async function logout() {
+  // Log the logout BEFORE clearing the session — needs the user info
+  const { logAction } = await import('./audit-log');
+  logAction('logout', { type: 'session' });
+
   sessionStorage.removeItem(STORAGE_KEY);
   emit();
   return { ok: true };

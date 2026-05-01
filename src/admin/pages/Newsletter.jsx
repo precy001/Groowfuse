@@ -13,6 +13,8 @@ import {
   timeAgo,
 } from '../lib/mock-data';
 import ConfirmModal from '../components/ConfirmModal';
+import { logAction } from '../lib/audit-log';
+import { getUser } from '../lib/auth';
 
 export default function Newsletter() {
   const [view, setView] = useState('subscribers'); // 'subscribers' | 'compose'
@@ -187,7 +189,13 @@ function SubscribersTable() {
         open={!!pendingRemove}
         onClose={() => setPendingRemove(null)}
         onConfirm={() => {
-          setFeedback(`${pendingRemove?.email} — removal will persist once the backend is wired up.`);
+          logAction('subscriber.remove', {
+            type:  'subscriber',
+            id:    pendingRemove?.id,
+            label: pendingRemove?.email,
+          });
+          const user = getUser();
+          setFeedback(`Removed ${pendingRemove?.email} (by ${user?.email || 'admin'}). Removal will persist once the backend is wired up.`);
         }}
         title="Remove subscriber?"
         body={
@@ -222,6 +230,14 @@ function ComposeForm() {
     e.preventDefault();
     setStatus('sending');
     await new Promise((r) => setTimeout(r, 700));
+    logAction('newsletter.send', {
+      type:  'newsletter',
+      id:    `nl_${Date.now()}`,
+      label: subject,
+    }, {
+      audience,
+      recipientCount,
+    });
     setStatus('sent');
   };
 
@@ -234,8 +250,8 @@ function ComposeForm() {
             Newsletter <span className="gf-serif" style={{ color: 'var(--green)' }}>queued</span>.
           </h2>
           <p style={{ marginTop: 12, color: 'var(--muted)', maxWidth: 420, marginInline: 'auto' }}>
-            Once the backend is wired up, this will send to {recipientCount} subscriber{recipientCount === 1 ? '' : 's'}.
-            For now this is a UI preview — nothing was actually sent.
+            Sent by <span style={{ color: 'var(--text)' }}>{getUser()?.email || 'admin'}</span> just now.
+            Once the backend is wired up, this will reach {recipientCount} subscriber{recipientCount === 1 ? '' : 's'}.
           </p>
           <button
             type="button"

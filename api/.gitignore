@@ -1,0 +1,7 @@
+.env
+storage/mail-log/*
+storage/rate-limit/*
+uploads/**/*
+!storage/mail-log/.gitkeep
+!storage/rate-limit/.gitkeep
+!uploads/.gitkeep

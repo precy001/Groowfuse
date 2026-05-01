@@ -1,0 +1,33 @@
+# GroowFuse API — Apache config
+#
+# Goals:
+#  1. Block direct web access to .env, lib/, migrations/, storage/
+#  2. Set sensible default headers for the entire api/ tree
+#  3. Allow CORS preflight to succeed before our PHP runs (we also
+#     handle CORS in PHP, but Apache replying to OPTIONS quickly
+#     shaves a hop)
+
+# Don't list directory contents anywhere under /api
+Options -Indexes
+
+# Use UTF-8 by default for any text response
+AddDefaultCharset UTF-8
+
+# ─── Block sensitive files ─────────────────────────────────────────
+<FilesMatch "^\.env|composer\.(json|lock)$">
+  Require all denied
+</FilesMatch>
+
+# Block direct access to library and migration folders
+RedirectMatch 404 ^/api/lib/.*$
+RedirectMatch 404 ^/api/migrations/.*$
+RedirectMatch 404 ^/api/storage/.*$
+RedirectMatch 404 ^/api/mail-templates/.*$
+
+# Allow uploads/ to be served (images linked from posts)
+<IfModule mod_headers.c>
+  # Only allow image MIME types from the uploads dir to be served
+  <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg)$">
+    Header set Cache-Control "public, max-age=2592000"
+  </FilesMatch>
+</IfModule>

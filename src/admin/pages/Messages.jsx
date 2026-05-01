@@ -13,6 +13,8 @@ import {
   timeAgo,
 } from '../lib/mock-data';
 import ConfirmModal from '../components/ConfirmModal';
+import { logAction } from '../lib/audit-log';
+import { getUser } from '../lib/auth';
 
 export default function Messages() {
   const { id } = useParams();
@@ -214,7 +216,13 @@ function MessageDetail({ message }) {
         open={archiveOpen}
         onClose={() => setArchiveOpen(false)}
         onConfirm={() => {
-          setFeedback('Archive will persist once the backend is wired up.');
+          logAction('message.archive', {
+            type:  'message',
+            id:    message.id,
+            label: `${message.contactName} (${message.companyName})`,
+          });
+          const user = getUser();
+          setFeedback(`Archived by ${user?.email || 'admin'} just now. Archive will persist once the backend is wired up.`);
         }}
         title="Archive this message?"
         body={

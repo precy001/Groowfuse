@@ -1829,3 +1829,189 @@
   font-size: 12px;
   color: var(--muted);
 }
+/* ════════════════════════════════════════════════════════════
+ * Onboarding tour
+ * ════════════════════════════════════════════════════════════ */
+
+.adm-tour {
+  text-align: center;
+  padding: 8px 4px 0;
+}
+
+.adm-tour-progress {
+  position: relative;
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.adm-tour-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: var(--green);
+  border-radius: 1px;
+  transition: width .35s cubic-bezier(.22,.61,.36,1);
+  box-shadow: 0 0 8px rgba(31, 224, 122, 0.4);
+}
+
+.adm-tour-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: rgba(31, 224, 122, 0.08);
+  border: 1px solid var(--green-soft);
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adm-tour-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--green);
+}
+
+.adm-tour-title {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0 0 14px;
+  color: var(--text);
+  max-width: 38ch;
+  margin-inline: auto;
+}
+@media (min-width: 540px) {
+  .adm-tour-title { font-size: 24px; }
+}
+
+.adm-tour-body {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 50ch;
+  margin: 0 auto 8px;
+  text-align: left;
+}
+.adm-tour-body p {
+  margin: 0 0 12px;
+}
+.adm-tour-body p:last-child {
+  margin-bottom: 0;
+}
+.adm-tour-body strong {
+  color: var(--text);
+  font-weight: 500;
+}
+.adm-tour-body em {
+  font-style: italic;
+  color: var(--green);
+  font-family: var(--serif);
+  font-size: 1.05em;
+}
+
+.adm-tour-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 18px auto 4px;
+  padding: 8px 14px;
+  background: rgba(31, 224, 122, 0.06);
+  border: 1px solid var(--green-soft);
+  border-radius: 6px;
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background .2s ease;
+}
+.adm-tour-cta:hover {
+  background: rgba(31, 224, 122, 0.12);
+}
+
+.adm-tour-footer {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.adm-tour-skip {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--border-bright);
+  transition: color .2s ease, text-decoration-color .2s ease;
+}
+.adm-tour-skip:hover {
+  color: var(--text);
+  text-decoration-color: var(--muted);
+}
+.adm-tour-nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ════════════════════════════════════════════════════════════
+ * Audit feed extras
+ * ════════════════════════════════════════════════════════════ */
+
+.adm-audit-avatar {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(31, 224, 122, 0.1);
+  border: 1px solid var(--border-bright);
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+/* Stacked status row — used in PostEditor for Last activity attribution */
+.adm-status-row-stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.adm-status-row-stack > span:first-child {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.adm-status-attribution {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+.adm-status-by {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}

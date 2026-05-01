@@ -12,6 +12,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import RichTextEditor from '../components/RichTextEditor';
 import ImagePickerModal from '../components/ImagePickerModal';
 import { CATEGORIES, getPostBySlug } from '../../data/posts';
+import { logAction, getLastActionForTarget, describeAction } from '../lib/audit-log';
+import { getUser } from '../lib/auth';
+import { timeAgo } from '../lib/mock-data';
 
 const blank = {
   slug: '',
@@ -91,9 +94,23 @@ export default function PostEditor() {
     setFeedback('');
     // Simulate the future API call
     await new Promise((r) => setTimeout(r, 600));
+
+    // Record the action — different verb depending on what happened
+    let verb;
+    if (!isEditing)              verb = status === 'published' ? 'post.publish' : 'post.create';
+    else if (status === 'published') verb = 'post.publish';
+    else                          verb = 'post.update';
+
+    logAction(verb, {
+      type:  'post',
+      id:    form.slug || 'new',
+      label: form.title || 'Untitled',
+    });
+
     setSavingMode(null);
+    const user = getUser();
     setFeedback(
-      `Saved locally. ${
+      `Saved by ${user?.email || 'admin'} just now. ${
         status === 'published' ? 'Publishing' : 'Drafts'
       } will persist once the backend is wired up.`
     );
@@ -213,6 +230,21 @@ export default function PostEditor() {
                 <span>Visibility</span>
                 <span style={{ color: 'var(--text)' }}>Public</span>
               </div>
+              {(() => {
+                const last = isEditing && form.slug ? getLastActionForTarget('post', form.slug) : null;
+                if (!last) return null;
+                return (
+                  <div className="adm-status-row adm-status-row-stack">
+                    <span>Last activity</span>
+                    <div className="adm-status-attribution">
+                      <span style={{ color: 'var(--text)' }}>{describeAction(last.action)}</span>
+                      <span className="adm-status-by">
+                        by {last.user.email} · {timeAgo(last.at)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

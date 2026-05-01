@@ -1,15 +1,27 @@
 /**
- * Admin Dashboard. Shows quick stats plus a feed of recent activity
- * (latest messages, latest subscribers).
+ * Admin Dashboard.
+ *
+ * Stat cards on top. Below: two-column activity area — recent contact
+ * messages on the left, audit-log activity on the right.
+ *
+ * The "Take the tour" link sits in the page-actions row so first-time admins
+ * who skip can come back to it whenever.
  */
 
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   dashboardStats,
   MOCK_MESSAGES,
-  MOCK_SUBSCRIBERS,
   timeAgo,
 } from '../lib/mock-data';
+import {
+  getRecentActions,
+  describeAction,
+  onAuditChange,
+} from '../lib/audit-log';
+import { onTourChange, openTour, resetForUser } from '../lib/tour';
+import { getUser } from '../lib/auth';
 
 export default function Dashboard() {
   const stats = dashboardStats();
@@ -18,9 +30,16 @@ export default function Dashboard() {
     .sort((a, b) => new Date(b.receivedAt) - new Date(a.receivedAt))
     .slice(0, 4);
 
-  const recentSubs = [...MOCK_SUBSCRIBERS]
-    .sort((a, b) => new Date(b.subscribedAt) - new Date(a.subscribedAt))
-    .slice(0, 5);
+  // Audit feed — re-renders whenever an action is logged anywhere
+  const [recentActions, setRecentActions] = useState(() => getRecentActions(8));
+  useEffect(() => {
+    const unsub = onAuditChange((next) => setRecentActions(next));
+    return unsub;
+  }, []);
+
+  // Force a re-render if the tour state changes (so we can show "Take the tour" )
+  const [, setTourTick] = useState(0);
+  useEffect(() => onTourChange(() => setTourTick((n) => n + 1)), []);
 
   return (
     <div className="adm-dashboard">
@@ -31,6 +50,18 @@ export default function Dashboard() {
           <h1 className="adm-page-title">Dashboard</h1>
         </div>
         <div className="adm-page-actions">
+          <button
+            type="button"
+            onClick={() => {
+              const user = getUser();
+              if (user) resetForUser(user.email);
+              openTour();
+            }}
+            className="adm-btn adm-btn-ghost"
+            title="Walk through the admin panel"
+          >
+            ↺ Take the tour
+          </button>
           <Link to="/admin/posts/new" className="adm-btn adm-btn-primary">
             New post →
           </Link>
@@ -72,8 +103,8 @@ export default function Dashboard() {
 
       {/* Two-column activity */}
       <section className="adm-grid-2">
-        {/* Recent messages */}
-        <article className="adm-panel">
+        {/* Recent messages — incoming engagement */}
+        <article className="adm-panel" data-tour-id="dashboard-messages">
           <header className="adm-panel-header">
             <div>
               <span className="adm-eyebrow">Recent messages</span>
@@ -104,28 +135,47 @@ export default function Dashboard() {
           </ul>
         </article>
 
-        {/* Recent subscribers */}
-        <article className="adm-panel">
+        {/* Audit activity — who did what */}
+        <article className="adm-panel" data-tour-id="dashboard-audit">
           <header className="adm-panel-header">
             <div>
-              <span className="adm-eyebrow">Recent subscribers</span>
-              <h2 className="adm-panel-title">Newsletter</h2>
+              <span className="adm-eyebrow">Activity log</span>
+              <h2 className="adm-panel-title">Recent actions</h2>
             </div>
-            <Link to="/admin/newsletter" className="adm-link-sm">
-              View all →
-            </Link>
           </header>
-          <ul className="adm-list">
-            {recentSubs.map((s) => (
-              <li key={s.id} className="adm-list-row">
-                <span className="adm-list-primary">{s.email}</span>
-                <span className="adm-list-meta">
-                  <span className={`adm-pill adm-pill-${s.status}`}>{s.status}</span>
-                  <span className="adm-list-time">{timeAgo(s.subscribedAt)}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          {recentActions.length === 0 ? (
+            <div className="adm-empty" style={{ padding: '32px 18px' }}>
+              No actions yet — once you publish, archive, or send something, it'll show here.
+            </div>
+          ) : (
+            <ul className="adm-activity">
+              {recentActions.map((entry) => (
+                <li key={entry.id}>
+                  <div className="adm-activity-row" style={{ cursor: 'default' }}>
+                    <span className="adm-audit-avatar" aria-hidden>
+                      {(entry.user.email || 'A').charAt(0).toUpperCase()}
+                    </span>
+                    <div className="adm-activity-body">
+                      <div className="adm-activity-top">
+                        <span className="adm-activity-name">
+                          <span style={{ color: 'var(--green)' }}>{entry.user.email}</span>{' '}
+                          <span style={{ color: 'var(--muted)', fontWeight: 400 }}>
+                            {describeAction(entry.action)}
+                          </span>
+                        </span>
+                        <span className="adm-activity-time">{timeAgo(entry.at)}</span>
+                      </div>
+                      {entry.target?.label && (
+                        <span className="adm-activity-meta">
+                          {entry.target.label}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </article>
       </section>
     </div>
