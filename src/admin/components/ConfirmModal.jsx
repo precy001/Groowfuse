@@ -1,6 +1,5 @@
 /**
  * Confirm dialog — for destructive or one-way actions.
- * Replaces window.confirm/alert with a themed modal.
  *
  * Usage:
  *   <ConfirmModal

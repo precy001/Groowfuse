@@ -3,7 +3,7 @@
  * via NavLink. Collapses to a header bar with a hamburger on mobile.
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { logout, getUser } from '../lib/auth';
 
@@ -47,7 +47,6 @@ export default function AdminNav({ open, onClose, unreadCount = 0 }) {
 
   return (
     <>
-      {/* Mobile overlay */}
       {open && (
         <div
           className="adm-nav-overlay"
@@ -60,7 +59,6 @@ export default function AdminNav({ open, onClose, unreadCount = 0 }) {
         className={`adm-nav ${open ? 'is-open' : ''}`}
         aria-label="Admin navigation"
       >
-        {/* Brand */}
         <div className="adm-nav-brand">
           <NavLink to="/admin" className="adm-nav-brand-link" end>
             <span className="adm-nav-brand-mark">
@@ -73,7 +71,6 @@ export default function AdminNav({ open, onClose, unreadCount = 0 }) {
           </NavLink>
         </div>
 
-        {/* Section nav */}
         <nav className="adm-nav-sections">
           {SECTIONS.map((section) => (
             <div key={section.label} className="adm-nav-section">
@@ -101,7 +98,6 @@ export default function AdminNav({ open, onClose, unreadCount = 0 }) {
           ))}
         </nav>
 
-        {/* Footer — user pill + logout */}
         <div className="adm-nav-footer">
           <div className="adm-nav-user">
             <span className="adm-nav-avatar" aria-hidden="true">
@@ -127,7 +123,6 @@ export default function AdminNav({ open, onClose, unreadCount = 0 }) {
   );
 }
 
-/* ─── Icons ─── */
 function NavIcon({ name }) {
   const props = {
     width: 16,

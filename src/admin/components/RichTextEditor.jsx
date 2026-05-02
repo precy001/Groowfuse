@@ -53,7 +53,6 @@ export default function RichTextEditor({ value = '', onChange, placeholder = 'St
 
   const handleLinkSubmit = (url) => {
     if (!url) {
-      // Empty → remove the link
       editor.chain().focus().extendMarkRange('link').unsetLink().run();
       return;
     }
