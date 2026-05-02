@@ -119,6 +119,19 @@ function require_admin(): array {
 }
 
 /**
+ * Send 403 unless the current admin is the 'owner'. Used for endpoints
+ * that manage other admin users — only the owner can create, demote,
+ * or delete other admins.
+ */
+function require_owner(): array {
+    $admin = require_admin();
+    if (($admin['role'] ?? '') !== 'owner') {
+        fail('This action requires owner privileges.', 403);
+    }
+    return $admin;
+}
+
+/**
  * Attempt login. On success, sets the session cookie and returns the
  * admin user array. Returns null on failure.
  *

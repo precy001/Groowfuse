@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
 import PageLoader from './components/PageLoader';
+import usePageViewTracker from './lib/use-page-view-tracker';
 
 // Public pages — eagerly loaded since they're the main user-facing experience
 import Home     from './pages/Home';
@@ -13,7 +14,7 @@ import BlogPost from './pages/BlogPost';
 import NotFound from './pages/NotFound';
 
 // Admin — code-split out of the main bundle so visitors don't pay
-// the cost of loading TipTap/ProseMirror unless they actually visit /admin.
+// the cost of loading TipTap/ProseMirror/Recharts unless they actually visit /admin.
 const AdminShell  = lazy(() => import('./admin/AdminShell'));
 const AdminLogin  = lazy(() => import('./admin/pages/AdminLogin'));
 const Dashboard   = lazy(() => import('./admin/pages/Dashboard'));
@@ -21,10 +22,10 @@ const Posts       = lazy(() => import('./admin/pages/Posts'));
 const PostEditor  = lazy(() => import('./admin/pages/PostEditor'));
 const Messages    = lazy(() => import('./admin/pages/Messages'));
 const Newsletter  = lazy(() => import('./admin/pages/Newsletter'));
+const Settings    = lazy(() => import('./admin/pages/Settings'));
+const Analytics   = lazy(() => import('./admin/pages/Analytics'));
 const RequireAuth = lazy(() => import('./admin/components/RequireAuth'));
 
-// Tiny loading frame that appears between admin route transitions.
-// Inherits the public site's dark bg so the change is invisible.
 function AdminFallback() {
   return (
     <div style={{
@@ -43,9 +44,19 @@ function AdminFallback() {
   );
 }
 
+/**
+ * Hosts the page-view tracker. Has to live inside <BrowserRouter> so the
+ * useLocation() hook works. Renders nothing visible.
+ */
+function TrackerHost() {
+  usePageViewTracker();
+  return null;
+}
+
 function App() {
   return (
     <BrowserRouter>
+      <TrackerHost />
       <PageLoader />
       <ScrollToTop />
       <Routes>
@@ -85,6 +96,8 @@ function App() {
           <Route path="messages"           element={<Suspense fallback={<AdminFallback />}><Messages /></Suspense>} />
           <Route path="messages/:id"       element={<Suspense fallback={<AdminFallback />}><Messages /></Suspense>} />
           <Route path="newsletter"         element={<Suspense fallback={<AdminFallback />}><Newsletter /></Suspense>} />
+          <Route path="analytics"          element={<Suspense fallback={<AdminFallback />}><Analytics /></Suspense>} />
+          <Route path="settings"           element={<Suspense fallback={<AdminFallback />}><Settings /></Suspense>} />
         </Route>
 
         {/* 404 */}

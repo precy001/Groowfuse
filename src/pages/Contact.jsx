@@ -401,6 +401,7 @@ function ContactForm() {
   });
   const [status, setStatus] = useState('idle'); // idle | loading | success | error
   const [errorMsg, setErrorMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({}); // server-returned per-field errors
 
   const set = (k) => (e) => {
     const value = e.target.value;
@@ -419,6 +420,7 @@ function ContactForm() {
     if (form.honeypot) return; // bot caught
     setStatus('loading');
     setErrorMsg('');
+    setFieldErrors({});
     try {
       await api.post('/contact.php', form);
       setStatus('success');
@@ -430,6 +432,11 @@ function ContactForm() {
     } catch (err) {
       setStatus('error');
       setErrorMsg(err.message || 'Something went wrong. Please try again.');
+      // Validation failures from the server arrive with err.fields = { fieldName: msg }
+      // — surface them next to the relevant input so the user can fix and retry.
+      if (err.fields && typeof err.fields === 'object') {
+        setFieldErrors(err.fields);
+      }
     }
   };
 
@@ -609,13 +616,25 @@ function ContactForm() {
         </div>
 
         {status === 'error' && (
-          <p
+          <div
             className="mt-4 text-[13px]"
             style={{ color: '#FF6B6B', fontFamily: 'var(--mono)' }}
             role="alert"
           >
-            {errorMsg}
-          </p>
+            <p>{errorMsg}</p>
+            {Object.keys(fieldErrors).length > 0 && (
+              <ul style={{ marginTop: 6, marginLeft: 14, listStyle: 'disc' }}>
+                {Object.entries(fieldErrors).map(([field, msg]) => (
+                  <li key={field}>
+                    <strong style={{ textTransform: 'capitalize' }}>
+                      {field.replace(/([A-Z])/g, ' $1').trim()}:
+                    </strong>{' '}
+                    {msg}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </div>
     </form>

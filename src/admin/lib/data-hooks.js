@@ -73,3 +73,21 @@ export function useAdminPost(id) {
     [id]
   );
 }
+
+/* ─── Admin users (owner only) ───────────────────────────────────── */
+
+export function useAdminUsers() {
+  return useAsync((signal) => api.get('/admin/users.php', { signal }), []);
+}
+
+/* ─── Analytics ──────────────────────────────────────────────────── */
+
+/**
+ * @param {'7d'|'30d'|'90d'} range
+ */
+export function useAnalytics(range = '30d') {
+  return useAsync(
+    (signal) => api.get(`/admin/analytics.php?range=${encodeURIComponent(range)}`, { signal }),
+    [range]
+  );
+}
