@@ -5,3 +5,4 @@ uploads/**/*
 !storage/mail-log/.gitkeep
 !storage/rate-limit/.gitkeep
 !uploads/.gitkeep
+vendor/*
