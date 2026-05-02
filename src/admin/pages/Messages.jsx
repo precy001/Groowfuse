@@ -1,48 +1,40 @@
 /**
- * Contact form messages — inbox-style list with detail panel.
+ * Contact form messages — admin view.
  *
- * On desktop: split layout — list left, detail right.
- * On mobile: list shows; tapping a row navigates to the detail.
+ * Reads from GET /admin/messages.php with a status filter.
+ * Single-message detail via GET /admin/messages.php?id=
+ * Archive via PATCH /admin/messages.php?id= { status: 'archived' }
  */
 
 import { useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import {
-  MOCK_MESSAGES,
-  formatAdminDateTime,
-  timeAgo,
-} from '../lib/mock-data';
 import ConfirmModal from '../components/ConfirmModal';
-import { logAction } from '../lib/audit-log';
+import { formatAdminDateTime, timeAgo } from '../lib/format';
+import { useMessages, useMessage } from '../lib/data-hooks';
+import { useAsyncCallback } from '../../lib/use-async';
+import { api } from '../../lib/api';
 import { getUser } from '../lib/auth';
 
 export default function Messages() {
   const { id } = useParams();
-  const [filter, setFilter] = useState('all'); // 'all' | 'unread' | 'archived'
-  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState('inbox'); // 'inbox' | 'unread' | 'archived'
+  const [query, setQuery]   = useState('');
+
+  const list = useMessages(filter);
+  const messages = list.data?.messages || [];
+  const counts   = list.data?.counts   || { unread: 0, total: 0, archived: 0 };
 
   const filtered = useMemo(() => {
-    let list = [...MOCK_MESSAGES];
-
-    if (filter === 'unread')   list = list.filter((m) => m.status === 'unread');
-    if (filter === 'archived') list = list.filter((m) => m.status === 'archived');
-    if (filter === 'all')      list = list.filter((m) => m.status !== 'archived');
-
-    if (query.trim()) {
-      const q = query.trim().toLowerCase();
-      list = list.filter(
-        (m) =>
-          m.contactName.toLowerCase().includes(q) ||
-          m.companyName.toLowerCase().includes(q) ||
-          m.message.toLowerCase().includes(q) ||
-          m.contactEmail.toLowerCase().includes(q)
-      );
-    }
-
-    return list.sort((a, b) => new Date(b.receivedAt) - new Date(a.receivedAt));
-  }, [filter, query]);
-
-  const selected = id ? MOCK_MESSAGES.find((m) => m.id === id) : null;
+    if (!query.trim()) return messages;
+    const q = query.trim().toLowerCase();
+    return messages.filter(
+      (m) =>
+        (m.contactName || '').toLowerCase().includes(q) ||
+        (m.companyName || '').toLowerCase().includes(q) ||
+        (m.message || '').toLowerCase().includes(q) ||
+        (m.contactEmail || '').toLowerCase().includes(q)
+    );
+  }, [messages, query]);
 
   return (
     <div className="adm-messages">
@@ -50,20 +42,24 @@ export default function Messages() {
         <div>
           <span className="adm-eyebrow">Engagement</span>
           <h1 className="adm-page-title">Messages</h1>
-          <p className="adm-page-sub">
-            {MOCK_MESSAGES.filter((m) => m.status === 'unread').length} unread ·{' '}
-            {MOCK_MESSAGES.length} total
-          </p>
+          <p className="adm-page-sub">{counts.unread} unread · {counts.total} total</p>
         </div>
       </header>
 
-      <div className={`adm-msg-layout ${selected ? 'has-detail' : ''}`}>
-        {/* List column */}
+      {list.error && (
+        <div className="adm-feedback" role="alert" style={{ borderColor: 'var(--red)', color: 'var(--red)', marginBottom: 16 }}>
+          Could not load messages: {list.error.message}
+          <button type="button" onClick={list.reload} className="adm-btn adm-btn-ghost" style={{ marginLeft: 12 }}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      <div className={`adm-msg-layout ${id ? 'has-detail' : ''}`}>
         <section className="adm-msg-list-col">
-          {/* Filter tabs */}
           <div className="adm-tabs" role="tablist">
             {[
-              { id: 'all',      label: 'Inbox' },
+              { id: 'inbox',    label: 'Inbox' },
               { id: 'unread',   label: 'Unread' },
               { id: 'archived', label: 'Archived' },
             ].map((t) => (
@@ -88,16 +84,17 @@ export default function Messages() {
             aria-label="Search messages"
           />
 
-          {/* List */}
           <ul className="adm-msg-list" role="list">
-            {filtered.length === 0 ? (
+            {list.loading ? (
+              <li className="adm-empty adm-empty-block">Loading…</li>
+            ) : filtered.length === 0 ? (
               <li className="adm-empty adm-empty-block">No messages match.</li>
             ) : (
               filtered.map((m) => (
                 <li key={m.id}>
                   <Link
                     to={`/admin/messages/${m.id}`}
-                    className={`adm-msg-row ${selected?.id === m.id ? 'is-selected' : ''} ${m.status === 'unread' ? 'is-unread' : ''}`}
+                    className={`adm-msg-row ${String(id) === String(m.id) ? 'is-selected' : ''} ${m.status === 'unread' ? 'is-unread' : ''}`}
                   >
                     <span className={`adm-dot ${m.status === 'unread' ? 'is-unread' : ''}`} aria-hidden />
                     <div className="adm-msg-row-body">
@@ -117,10 +114,9 @@ export default function Messages() {
           </ul>
         </section>
 
-        {/* Detail column */}
         <section className="adm-msg-detail-col">
-          {selected ? (
-            <MessageDetail message={selected} />
+          {id ? (
+            <MessageDetail id={id} onMutated={list.reload} />
           ) : (
             <div className="adm-msg-detail-empty">
               <span className="adm-eyebrow">Select a message</span>
@@ -133,14 +129,47 @@ export default function Messages() {
   );
 }
 
-function MessageDetail({ message }) {
+function MessageDetail({ id, onMutated }) {
   const navigate = useNavigate();
+  const { data, error, loading, reload } = useMessage(id);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [feedback, setFeedback] = useState('');
 
+  const archiver = useAsyncCallback(() =>
+    api.patch(`/admin/messages.php?id=${id}`, { status: 'archived' })
+  );
+
+  const message = data?.message;
+
+  if (loading) {
+    return (
+      <article className="adm-msg-detail">
+        <div className="adm-msg-detail-body">
+          <p style={{ color: 'var(--muted)' }}>Loading…</p>
+        </div>
+      </article>
+    );
+  }
+  if (error) {
+    return (
+      <article className="adm-msg-detail">
+        <div className="adm-msg-detail-body">
+          <p style={{ color: 'var(--red)' }}>{error.message}</p>
+          <button type="button" onClick={reload} className="adm-btn adm-btn-ghost" style={{ marginTop: 12 }}>
+            Retry
+          </button>
+        </div>
+      </article>
+    );
+  }
+  if (!message) return null;
+
   const handleReply = () => {
-    const body = encodeURIComponent(`\n\n----\nIn reply to your enquiry from ${formatAdminDateTime(message.receivedAt)}:\n\n${message.message}`);
-    window.location.href = `mailto:${message.contactEmail}?subject=Re: Your enquiry to GroowFuse&body=${body}`;
+    const body = encodeURIComponent(
+      `\n\n----\nIn reply to your enquiry from ${formatAdminDateTime(message.receivedAt)}:\n\n${message.message}`
+    );
+    window.location.href =
+      `mailto:${message.contactEmail}?subject=Re: Your enquiry to GroowFuse&body=${body}`;
   };
 
   return (
@@ -155,8 +184,13 @@ function MessageDetail({ message }) {
           ←
         </button>
         <div className="adm-msg-detail-actions">
-          <button type="button" onClick={() => setArchiveOpen(true)} className="adm-btn adm-btn-ghost">
-            Archive
+          <button
+            type="button"
+            onClick={() => setArchiveOpen(true)}
+            className="adm-btn adm-btn-ghost"
+            disabled={message.status === 'archived'}
+          >
+            {message.status === 'archived' ? 'Archived' : 'Archive'}
           </button>
           <button type="button" onClick={handleReply} className="adm-btn adm-btn-primary">
             Reply via email →
@@ -171,33 +205,18 @@ function MessageDetail({ message }) {
         </a>
 
         <dl className="adm-msg-detail-grid">
-          <div>
-            <dt>Company</dt>
-            <dd>{message.companyName}</dd>
-          </div>
-          <div>
-            <dt>Company email</dt>
-            <dd>{message.companyEmail || '—'}</dd>
-          </div>
-          <div>
-            <dt>Country</dt>
-            <dd>{message.country || '—'}</dd>
-          </div>
-          <div>
-            <dt>Sector</dt>
-            <dd>{message.sector || '—'}</dd>
-          </div>
+          <div><dt>Company</dt>       <dd>{message.companyName || '—'}</dd></div>
+          <div><dt>Company email</dt> <dd>{message.companyEmail || '—'}</dd></div>
+          <div><dt>Country</dt>       <dd>{message.country || '—'}</dd></div>
+          <div><dt>Sector</dt>        <dd>{message.sector || '—'}</dd></div>
           <div>
             <dt>Service type</dt>
             <dd>
-              {message.serviceType}
+              {message.serviceType || '—'}
               {message.serviceTypeOther && ` — ${message.serviceTypeOther}`}
             </dd>
           </div>
-          <div>
-            <dt>Received</dt>
-            <dd>{formatAdminDateTime(message.receivedAt)}</dd>
-          </div>
+          <div><dt>Received</dt>      <dd>{formatAdminDateTime(message.receivedAt)}</dd></div>
         </dl>
 
         <div className="adm-msg-detail-message">
@@ -215,14 +234,16 @@ function MessageDetail({ message }) {
       <ConfirmModal
         open={archiveOpen}
         onClose={() => setArchiveOpen(false)}
-        onConfirm={() => {
-          logAction('message.archive', {
-            type:  'message',
-            id:    message.id,
-            label: `${message.contactName} (${message.companyName})`,
-          });
-          const user = getUser();
-          setFeedback(`Archived by ${user?.email || 'admin'} just now. Archive will persist once the backend is wired up.`);
+        onConfirm={async () => {
+          try {
+            await archiver.run();
+            const user = getUser();
+            setFeedback(`Archived by ${user?.email || 'admin'} just now.`);
+            reload();
+            onMutated?.();
+          } catch (err) {
+            setFeedback(`Could not archive: ${err.message}`);
+          }
         }}
         title="Archive this message?"
         body={
@@ -232,7 +253,7 @@ function MessageDetail({ message }) {
             It'll be hidden from the inbox but kept in the Archived tab.
           </p>
         }
-        confirmLabel="Archive"
+        confirmLabel={archiver.loading ? 'Archiving…' : 'Archive'}
       />
     </article>
   );

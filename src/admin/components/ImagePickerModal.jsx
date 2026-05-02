@@ -1,17 +1,19 @@
 /**
  * Image picker modal — two ways in: paste a URL, or upload from disk.
  *
- * For uploads, currently inlines the image as a base64 data URL (works
- * without a backend). Once the upload endpoint exists, swap the
- * FileReader path for a fetch to /api/upload and use the returned URL.
+ * Uploads go through POST /admin/upload.php — the API saves the file
+ * and returns its URL. The picker resolves with that URL, never with
+ * a base64 data URI. This keeps the post body small and lets the same
+ * image be cached + served by the API host's static file handler.
  *
  * Resolves with: { src, alt } — calls onPick(src, alt) and closes.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import Modal, { ModalFooter } from './Modal';
+import { api, apiUrl } from '../../lib/api';
 
-const MAX_FILE_BYTES = 5 * 1024 * 1024;  // 5 MB safety cap on inline base64
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 export default function ImagePickerModal({ open, onClose, onPick, title = 'Insert image' }) {
   const [tab, setTab] = useState('upload'); // 'upload' | 'url'
@@ -35,7 +37,7 @@ export default function ImagePickerModal({ open, onClose, onPick, title = 'Inser
     }
   }, [open]);
 
-  const handleFile = (file) => {
+  const handleFile = async (file) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setError('That file does not look like an image.');
@@ -49,18 +51,26 @@ export default function ImagePickerModal({ open, onClose, onPick, title = 'Inser
     setError('');
     setBusy(true);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target.result;
-      setPreview(dataUrl);
-      setPendingSrc(dataUrl);
+    // Show an instant local preview while the upload runs in the background
+    const localUrl = URL.createObjectURL(file);
+    setPreview(localUrl);
+
+    try {
+      const res = await api.upload('/admin/upload.php', file);
+      // The server returns a host-relative URL — we keep it that way so
+      // the post body is portable across environments. apiUrl() turns it
+      // absolute when needed for previews.
+      setPendingSrc(res.url);
+      setPreview(apiUrl(res.url));
+      URL.revokeObjectURL(localUrl);
       setBusy(false);
-    };
-    reader.onerror = () => {
-      setError('Could not read that file.');
+    } catch (err) {
+      URL.revokeObjectURL(localUrl);
+      setPreview('');
+      setPendingSrc('');
+      setError(err?.message || 'Upload failed.');
       setBusy(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleUrlChange = (value) => {
@@ -192,7 +202,7 @@ function UploadTab({ onFile, busy }) {
         PNG, JPG, GIF, or WebP — up to 5 MB
       </p>
       <p className="adm-dropzone-note">
-        Stored inline for now. Real upload endpoint plugs in when the backend lands.
+        Files are stored on the server and reused across posts.
       </p>
     </div>
   );

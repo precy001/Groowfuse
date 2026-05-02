@@ -81,7 +81,7 @@ function App() {
           <Route index                     element={<Suspense fallback={<AdminFallback />}><Dashboard /></Suspense>} />
           <Route path="posts"              element={<Suspense fallback={<AdminFallback />}><Posts /></Suspense>} />
           <Route path="posts/new"          element={<Suspense fallback={<AdminFallback />}><PostEditor /></Suspense>} />
-          <Route path="posts/:slug/edit"   element={<Suspense fallback={<AdminFallback />}><PostEditor /></Suspense>} />
+          <Route path="posts/:id/edit"     element={<Suspense fallback={<AdminFallback />}><PostEditor /></Suspense>} />
           <Route path="messages"           element={<Suspense fallback={<AdminFallback />}><Messages /></Suspense>} />
           <Route path="messages/:id"       element={<Suspense fallback={<AdminFallback />}><Messages /></Suspense>} />
           <Route path="newsletter"         element={<Suspense fallback={<AdminFallback />}><Newsletter /></Suspense>} />

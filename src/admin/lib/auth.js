@@ -1,36 +1,35 @@
 /**
- * Admin authentication helpers.
+ * Admin authentication.
  * --------------------------------------------------------
+ * Wraps the backend session-cookie auth endpoints. The session itself
+ * is held in an HttpOnly cookie that the API sets on /admin/login.php
+ * and clears on /admin/logout.php — JS cannot read it (which is the
+ * point — no XSS-stealable token).
  *
- *  ⚠️  TEMPORARY FRONTEND-ONLY AUTH  ⚠️
+ * Auth state is broadcast to subscribers so AdminShell, AdminNav, and
+ * RequireAuth can react to login/logout without prop drilling.
  *
- * Credentials are HARDCODED in this file as a placeholder. Anyone who
- * inspects the JS bundle can read them. This is acceptable ONLY for the
- * pre-backend prototyping phase.
+ * Public surface:
+ *   bootstrap()             — call on app mount; resolves the current user
+ *   login(email, password)  — { ok, user } | { ok: false, error }
+ *   logout()
+ *   getUser()               — last known user, or null (sync)
+ *   onAuthChange(fn)        — subscribe to changes
  *
- * When the PHP backend lands, this file's responsibilities change:
- *   1. Remove HARDCODED_EMAIL and HARDCODED_PASSWORD constants entirely.
- *   2. login() should POST credentials to /api/admin/login.php and store
- *      whatever session token the server returns (httpOnly cookie is best;
- *      if not possible, sessionStorage with a short expiry).
- *   3. isAuthenticated() should call /api/admin/me.php and trust the server,
- *      not check a client-side flag.
- *   4. logout() should call /api/admin/logout.php to invalidate server-side.
- *
- * The component-level API (login, logout, getUser, isAuthenticated,
- * onAuthChange) stays the same so swap-out is a localized change.
+ * The shape of getUser() and the result of login() match what the
+ * hardcoded version returned, so callers like the dashboard's
+ * "Take the tour" button keep working.
  */
 
-const HARDCODED_EMAIL    = 'dev@groowfuse.com';
-const HARDCODED_PASSWORD = 'admin101';
+import { api, ApiError } from '../../lib/api';
 
-const STORAGE_KEY = 'gf-admin-session';
+let currentUser  = null;
+let bootstrapped = false;
+let pendingBoot  = null;
 
-// Subscribers for auth-state changes (login/logout) — pages that need to
-// react (e.g. show "Logged in as ___" in the topbar) call onAuthChange.
 const listeners = new Set();
 function emit() {
-  for (const fn of listeners) fn(getUser());
+  for (const fn of listeners) fn(currentUser);
 }
 
 /**
@@ -42,63 +41,88 @@ export function onAuthChange(fn) {
 }
 
 /**
- * Attempt to log in. Returns { ok: true } on success, { ok: false, error }
- * on failure. Async to match the eventual fetch-based version.
+ * Last known user, synchronously. Returns null if not logged in
+ * (or before bootstrap()).
  */
-export async function login(email, password) {
-  // Simulate a small server delay so the UX matches the future real flow
-  await new Promise((r) => setTimeout(r, 350));
-
-  const emailLower = (email || '').trim().toLowerCase();
-
-  if (emailLower !== HARDCODED_EMAIL || password !== HARDCODED_PASSWORD) {
-    return { ok: false, error: 'Invalid email or password.' };
-  }
-
-  const session = {
-    email: HARDCODED_EMAIL,
-    name:  'Admin',
-    loggedInAt: new Date().toISOString(),
-  };
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-  emit();
-
-  // Log the login. Imported lazily to avoid a circular module load
-  // (audit-log → auth.getUser). At call time the dependency is resolved.
-  const { logAction } = await import('./audit-log');
-  logAction('login', { type: 'session' });
-
-  return { ok: true, user: session };
+export function getUser() {
+  return currentUser;
 }
 
 /**
- * Clear the session. Always succeeds. Async to match real flow.
+ * Was bootstrap()'s first run completed? Used by RequireAuth so it
+ * doesn't briefly redirect to /login while we're checking the cookie.
+ */
+export function isBootstrapped() {
+  return bootstrapped;
+}
+
+/**
+ * Resolve the current admin from the session cookie. Idempotent —
+ * subsequent calls return the same in-flight promise (or resolved value).
+ *
+ * Call this exactly once at app mount, plus whenever login/logout occurs.
+ */
+export function bootstrap() {
+  if (bootstrapped) return Promise.resolve(currentUser);
+  if (pendingBoot)  return pendingBoot;
+
+  pendingBoot = api.get('/admin/me.php')
+    .then((res) => {
+      currentUser = res?.user ?? null;
+    })
+    .catch((err) => {
+      // 401 = not logged in. Anything else (network, 500) = log + treat as unauthed
+      if (!(err instanceof ApiError) || err.status !== 401) {
+        // eslint-disable-next-line no-console
+        console.warn('[admin auth] bootstrap failed:', err?.message || err);
+      }
+      currentUser = null;
+    })
+    .finally(() => {
+      bootstrapped = true;
+      pendingBoot  = null;
+      emit();
+    });
+
+  return pendingBoot;
+}
+
+/**
+ * Attempt login. Returns { ok: true, user } on success,
+ * { ok: false, error } on failure.
+ */
+export async function login(email, password) {
+  try {
+    const res  = await api.post('/admin/login.php', { email, password });
+    currentUser  = res?.user ?? null;
+    bootstrapped = true;
+    emit();
+    return { ok: true, user: currentUser };
+  } catch (err) {
+    const msg = err instanceof ApiError ? err.message : 'Could not sign in.';
+    return { ok: false, error: msg };
+  }
+}
+
+/**
+ * Destroy the current session. Always clears local state, even if the
+ * server call fails (the cookie is cleared client-side too).
  */
 export async function logout() {
-  // Log the logout BEFORE clearing the session — needs the user info
-  const { logAction } = await import('./audit-log');
-  logAction('logout', { type: 'session' });
-
-  sessionStorage.removeItem(STORAGE_KEY);
+  try {
+    await api.post('/admin/logout.php');
+  } catch {
+    // ignore — best effort
+  }
+  currentUser = null;
   emit();
   return { ok: true };
 }
 
 /**
- * Get the current logged-in user, or null.
- */
-export function getUser() {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Boolean shorthand. Use this for route guards.
+ * Boolean shorthand. Note this is sync and only correct after
+ * bootstrap() has resolved (or after a successful login).
  */
 export function isAuthenticated() {
-  return !!getUser();
+  return !!currentUser;
 }

@@ -17,26 +17,36 @@ import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import { useReveal, useMouseGlow } from '../lib/hooks';
-import { POSTS, CATEGORIES, formatDate } from '../data/posts';
+import { usePostList, useCategoriesFromList, formatDate } from '../lib/posts';
 
 export default function Blog() {
   const [activeCategory, setActiveCategory] = useState('all');
 
+  // Fetch all posts in one call (admin volume is small enough that we don't
+  // need server-side category filtering for the index page — we sort + filter
+  // client-side so the category chips switch instantly without a refetch).
+  const { data, error, loading, reload } = usePostList({ category: 'all', limit: 100 });
+
+  const posts      = data?.posts || [];
+  const categories = useCategoriesFromList(data);
+
   // Most recent post (by date) is always featured at top
   const featured = useMemo(() => {
-    return [...POSTS].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-  }, []);
+    if (posts.length === 0) return null;
+    return [...posts].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+  }, [posts]);
 
   // Grid posts: everything except the featured, filtered by category
   const gridPosts = useMemo(() => {
-    return POSTS
+    if (!featured) return [];
+    return posts
       .filter((p) => p.slug !== featured.slug)
-      .filter((p) => activeCategory === 'all' || p.category.id === activeCategory)
+      .filter((p) => activeCategory === 'all' || p.category?.id === activeCategory)
       .sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [activeCategory, featured.slug]);
+  }, [posts, activeCategory, featured]);
 
   // Blog index structured data — surfaces all posts to crawlers in one shot
-  const jsonLd = {
+  const jsonLd = posts.length > 0 ? {
     '@context': 'https://schema.org',
     '@type': 'Blog',
     'name': 'GroowFuse — Insights',
@@ -47,15 +57,15 @@ export default function Blog() {
       'name': 'GroowFuse Consult',
       'url': 'https://groowfuse.com',
     },
-    'blogPost': POSTS.map((p) => ({
+    'blogPost': posts.map((p) => ({
       '@type': 'BlogPosting',
       'headline': p.title,
       'description': p.excerpt,
       'datePublished': p.date,
       'url': `https://groowfuse.com/blog/${p.slug}`,
-      'author': { '@type': 'Organization', 'name': p.author.name },
+      'author': { '@type': 'Organization', 'name': p.author?.name || 'GroowFuse Editorial' },
     })),
-  };
+  } : null;
 
   return (
     <div className="gf-root">
@@ -70,12 +80,51 @@ export default function Blog() {
       <BlogHero
         activeCategory={activeCategory}
         onCategoryChange={setActiveCategory}
+        categories={categories}
       />
-      <FeaturedPost post={featured} />
-      <PostList posts={gridPosts} category={activeCategory} />
+
+      {loading ? (
+        <BlogStatus>Loading articles…</BlogStatus>
+      ) : error ? (
+        <BlogStatus>
+          <p style={{ color: 'var(--text)', marginBottom: 12 }}>
+            We couldn't load the articles right now.
+          </p>
+          <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24 }}>
+            {error.message}
+          </p>
+          <button
+            type="button"
+            onClick={reload}
+            className="gf-btn-primary"
+            style={{ padding: '10px 18px' }}
+          >
+            Try again
+          </button>
+        </BlogStatus>
+      ) : posts.length === 0 ? (
+        <BlogStatus>No articles published yet. Check back soon.</BlogStatus>
+      ) : (
+        <>
+          <FeaturedPost post={featured} />
+          <PostList posts={gridPosts} category={activeCategory} categories={categories} />
+        </>
+      )}
+
       <NewsletterStrip />
       <Footer />
     </div>
+  );
+}
+
+/* Tiny status panel used for loading / error / empty */
+function BlogStatus({ children }) {
+  return (
+    <section className="relative py-24 lg:py-32 border-t" style={{ borderColor: 'var(--border)' }}>
+      <div className="max-w-[800px] mx-auto px-6 lg:px-10 text-center">
+        {children}
+      </div>
+    </section>
   );
 }
 
@@ -83,7 +132,7 @@ export default function Blog() {
  * Hero
  * ──────────────────────────────────────────────────────────── */
 
-function BlogHero({ activeCategory, onCategoryChange }) {
+function BlogHero({ activeCategory, onCategoryChange, categories = [] }) {
   const spotRef = useMouseGlow();
 
   return (
@@ -164,7 +213,7 @@ function BlogHero({ activeCategory, onCategoryChange }) {
               <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--dim)', letterSpacing: '0.18em', marginRight: 8 }}>
                 FILTER /
               </span>
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <button
                   key={cat.id}
                   type="button"
@@ -261,7 +310,7 @@ function FeaturedPost({ post }) {
  * Post list — vertical stack of horizontal expandable cards
  * ──────────────────────────────────────────────────────────── */
 
-function PostList({ posts, category }) {
+function PostList({ posts, category, categories = [] }) {
   const [ref, shown] = useReveal(0.05);
 
   return (
@@ -278,7 +327,7 @@ function PostList({ posts, category }) {
             <h2 className="gf-h2 mt-6" style={{ fontSize: 'clamp(26px, 3.2vw, 40px)' }}>
               {category === 'all'
                 ? <>From the <span className="gf-serif" style={{ color: 'var(--green)' }}>field</span>.</>
-                : <>Filtered to <span className="gf-serif" style={{ color: 'var(--green)' }}>{CATEGORIES.find((c) => c.id === category)?.label}</span>.</>
+                : <>Filtered to <span className="gf-serif" style={{ color: 'var(--green)' }}>{categories.find((c) => c.id === category)?.label}</span>.</>
               }
             </h2>
           </div>

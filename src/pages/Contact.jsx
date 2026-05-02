@@ -19,6 +19,7 @@ import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import { useReveal, useMouseGlow } from '../lib/hooks';
+import { api } from '../lib/api';
 
 export default function Contact() {
   const jsonLd = {
@@ -419,14 +420,7 @@ function ContactForm() {
     setStatus('loading');
     setErrorMsg('');
     try {
-      // Wire up when the PHP endpoint is ready:
-      // const res = await fetch('/api/contact.php', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(form),
-      // });
-      // if (!res.ok) throw new Error('Server returned ' + res.status);
-      await new Promise((r) => setTimeout(r, 800)); // placeholder
+      await api.post('/contact.php', form);
       setStatus('success');
       setForm({
         companyName: '', companyEmail: '', country: '', sector: '',

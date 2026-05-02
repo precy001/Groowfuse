@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import SEO from '../../components/SEO';
-import { login, isAuthenticated } from '../lib/auth';
+import { login, isAuthenticated, bootstrap } from '../lib/auth';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -19,12 +19,19 @@ export default function AdminLogin() {
   const [status, setStatus] = useState('idle'); // 'idle' | 'submitting' | 'error'
   const [error, setError] = useState('');
 
-  // If already logged in, skip the form.
+  // If already logged in, skip the form. Bootstrap first because auth
+  // state is async — the cookie may already be valid even if getUser()
+  // returns null on first render.
   useEffect(() => {
-    if (isAuthenticated()) {
-      const target = location.state?.from?.pathname || '/admin';
-      navigate(target, { replace: true });
-    }
+    let cancelled = false;
+    bootstrap().then(() => {
+      if (cancelled) return;
+      if (isAuthenticated()) {
+        const target = location.state?.from?.pathname || '/admin';
+        navigate(target, { replace: true });
+      }
+    });
+    return () => { cancelled = true; };
   }, [navigate, location.state]);
 
   const handleSubmit = async (e) => {

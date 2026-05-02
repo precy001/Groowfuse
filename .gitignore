@@ -23,3 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 *.patch
+# Frontend env (real values — keep out of git)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Don't ignore the example
+!.env.example
+.patch

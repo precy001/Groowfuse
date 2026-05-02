@@ -17,19 +17,55 @@ import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import { useReveal } from '../lib/hooks';
-import { getPostBySlug, getRelatedPosts, formatDate } from '../data/posts';
+import { usePost, formatDate } from '../lib/posts';
 import { BookmarkIcon } from './Blog';
 
 export default function BlogPost() {
   const { slug } = useParams();
-  const post = getPostBySlug(slug);
+  const { data, error, loading } = usePost(slug);
 
-  // Unknown slug → bounce to /blog
-  if (!post) {
+  // Loading state — render same shell so layout doesn't jump
+  if (loading) {
+    return (
+      <div className="gf-root">
+        <Nav />
+        <section className="relative py-24 lg:py-32 border-t" style={{ borderColor: 'var(--border)' }}>
+          <div className="max-w-[800px] mx-auto px-6 lg:px-10 text-center" style={{ color: 'var(--muted)' }}>
+            Loading article…
+          </div>
+        </section>
+        <Footer />
+      </div>
+    );
+  }
+
+  // 404 from API or unknown slug → bounce to /blog
+  if (!data?.post) {
+    // For network errors we still want to show something useful, not silently redirect
+    if (error && error.status !== 404) {
+      return (
+        <div className="gf-root">
+          <Nav />
+          <section className="relative py-24 lg:py-32 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div className="max-w-[800px] mx-auto px-6 lg:px-10 text-center">
+              <p style={{ color: 'var(--text)', marginBottom: 12 }}>
+                We couldn't load this article right now.
+              </p>
+              <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24 }}>
+                {error.message}
+              </p>
+              <Link to="/blog" className="gf-link-arrow">← Back to all articles</Link>
+            </div>
+          </section>
+          <Footer />
+        </div>
+      );
+    }
     return <Navigate to="/blog" replace />;
   }
 
-  const related = getRelatedPosts(post.slug, 3);
+  const post    = data.post;
+  const related = data.related || [];
   const articleUrl = `https://groowfuse.com/blog/${post.slug}`;
 
   const articleJsonLd = {
@@ -42,7 +78,7 @@ export default function BlogPost() {
     'dateModified': post.date,
     'author': {
       '@type': 'Organization',
-      'name': post.author.name,
+      'name': post.author?.name || 'GroowFuse Editorial',
       'url': 'https://groowfuse.com',
     },
     'publisher': {
@@ -57,7 +93,7 @@ export default function BlogPost() {
       '@type': 'WebPage',
       '@id': articleUrl,
     },
-    'articleSection': post.category.label,
+    'articleSection': post.category?.label,
     'keywords': post.tags?.join(', '),
   };
 
@@ -215,11 +251,12 @@ function ArticleBody({ post }) {
   return (
     <section className="relative py-20 lg:py-28">
       <div className="relative max-w-[760px] mx-auto px-6 lg:px-10">
-        <div className="gf-article-prose">
-          {post.content.map((block, i) => (
-            <ContentBlock key={i} block={block} />
-          ))}
-        </div>
+        {/* Body comes from the rich-text editor as sanitized HTML.
+            We trust content authored by admins and stored server-side. */}
+        <div
+          className="gf-article-prose"
+          dangerouslySetInnerHTML={{ __html: post.body || '' }}
+        />
 
         {/* Tags */}
         {post.tags?.length > 0 && (

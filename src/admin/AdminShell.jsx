@@ -11,13 +11,14 @@ import { Outlet } from 'react-router-dom';
 import AdminNav from './components/AdminNav';
 import AdminTour from './components/AdminTour';
 import SEO from '../components/SEO';
-import { MOCK_MESSAGES } from './lib/mock-data';
+import { useDashboardStats } from './lib/data-hooks';
 
 export default function AdminShell() {
   const [navOpen, setNavOpen] = useState(false);
 
-  // Pulled from mock data for now; will become a fetch when backend lands.
-  const unreadCount = MOCK_MESSAGES.filter((m) => m.status === 'unread').length;
+  // Live unread count for the sidebar badge
+  const stats = useDashboardStats();
+  const unreadCount = stats.data?.unreadMessages || 0;
 
   return (
     <div className="adm-shell">

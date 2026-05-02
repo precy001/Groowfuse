@@ -1,73 +1,94 @@
 /**
- * Post editor — used for both create (no slug param) and edit (with slug param).
- * Layout: title + slug + meta in main column, sidebar with category, tags,
- * cover image, status, and publish button.
+ * Post editor — admin view.
  *
- * Save / publish actions are placeholders until the API exists. They show
- * a clear warning that nothing persists yet.
+ * /admin/posts/new           → create
+ * /admin/posts/:id/edit      → edit existing post (id is the numeric post id)
+ *
+ * Reads from GET /admin/posts.php?id= for edit mode.
+ * Saves via POST /admin/posts.php (create) or PUT /admin/posts.php?id= (update).
+ *
+ * Cover image picker uploads via POST /admin/upload.php and stores the
+ * returned URL — never a base64 data URL.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import RichTextEditor from '../components/RichTextEditor';
 import ImagePickerModal from '../components/ImagePickerModal';
-import { CATEGORIES, getPostBySlug } from '../../data/posts';
-import { logAction, getLastActionForTarget, describeAction } from '../lib/audit-log';
-import { getUser } from '../lib/auth';
-import { timeAgo } from '../lib/mock-data';
+import { useAdminPost } from '../lib/data-hooks';
+import { useActionsForTarget, describeAction } from '../lib/audit-log';
+import { timeAgo } from '../lib/format';
+import { useAsyncCallback } from '../../lib/use-async';
+import { api, apiUrl } from '../../lib/api';
 
 const blank = {
-  slug: '',
-  title: '',
-  excerpt: '',
-  categoryId: 'procurement',
-  authorName: 'GroowFuse Editorial',
-  authorRole: 'Practice Team',
-  date: new Date().toISOString().slice(0, 10),
+  slug:        '',
+  title:       '',
+  excerpt:     '',
+  categoryId:  '',
+  authorName:  'GroowFuse Editorial',
+  authorRole:  'Practice Team',
+  date:        new Date().toISOString().slice(0, 10),
   readMinutes: 6,
-  coverImage: '',
-  coverAlt: '',
-  tagsRaw: '',
-  body: '',
-  status: 'draft',
+  coverImage:  '',
+  coverAlt:    '',
+  tagsRaw:     '',
+  body:        '',
+  status:      'draft',
 };
 
 export default function PostEditor() {
-  const { slug } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const isEditing = !!slug;
+  const isEditing = !!id;
 
+  // Load existing post when editing
+  const { data, error, loading } = useAdminPost(isEditing ? id : null);
+  const post = data?.post;
+
+  // Activity feed for this specific post
+  const audit = useActionsForTarget('post', isEditing ? id : null, 5);
+
+  // Categories — pulled from public posts endpoint (it returns the catalog)
+  const [categories, setCategories] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    api.get('/posts.php?limit=1')
+      .then((res) => { if (alive) setCategories(res?.categories || []); })
+      .catch(() => { /* non-fatal */ });
+    return () => { alive = false; };
+  }, []);
+
+  // Map server post → form shape
   const initial = useMemo(() => {
-    if (!isEditing) return blank;
-    const post = getPostBySlug(slug);
-    if (!post) return blank;
-
+    if (!isEditing || !post) return blank;
     return {
-      slug: post.slug,
-      title: post.title,
-      excerpt: post.excerpt,
-      categoryId: post.category.id,
-      authorName: post.author.name,
-      authorRole: post.author.role,
-      date: post.date,
-      readMinutes: post.readMinutes,
-      coverImage: post.coverImage,
-      coverAlt: post.coverAlt,
-      tagsRaw: (post.tags || []).join(', '),
-      body: blocksToHtml(post.content || []),
-      status: 'published',
+      slug:        post.slug || '',
+      title:       post.title || '',
+      excerpt:     post.excerpt || '',
+      categoryId:  post.category?.id || '',
+      authorName:  post.authorName || post.author?.name || 'GroowFuse Editorial',
+      authorRole:  post.authorRole || post.author?.role || 'Practice Team',
+      date:        post.date || new Date().toISOString().slice(0, 10),
+      readMinutes: post.readMinutes || 6,
+      coverImage:  post.coverImage || '',
+      coverAlt:    post.coverAlt || '',
+      tagsRaw:     (post.tags || []).join(', '),
+      body:        post.body || '',
+      status:      post.status || 'draft',
     };
-  }, [slug, isEditing]);
+  }, [post, isEditing]);
 
-  const [form, setForm] = useState(initial);
-  const [dirty, setDirty] = useState(false);
-  const [savingMode, setSavingMode] = useState(null); // 'draft' | 'publish' | null
-  const [feedback, setFeedback] = useState('');
+  const [form, setForm]                       = useState(initial);
+  const [dirty, setDirty]                     = useState(false);
+  const [feedback, setFeedback]               = useState('');
+  const [serverErrors, setServerErrors]       = useState({});
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
 
   useEffect(() => {
     setForm(initial);
     setDirty(false);
+    setServerErrors({});
   }, [initial]);
 
   const set = (key) => (value) => {
@@ -79,7 +100,6 @@ export default function PostEditor() {
   const onTitleChange = (e) => {
     const newTitle = e.target.value;
     setForm((prev) => {
-      // Auto-fill slug from title when creating a new post and slug is empty
       const next = { ...prev, title: newTitle };
       if (!isEditing && !prev.slug) {
         next.slug = slugify(newTitle);
@@ -89,37 +109,68 @@ export default function PostEditor() {
     setDirty(true);
   };
 
+  const saver = useAsyncCallback((status) => {
+    const payload = {
+      title:        form.title,
+      slug:         form.slug,
+      excerpt:      form.excerpt,
+      body:         form.body,
+      // Slug-based category — backend resolves to id
+      category:     form.categoryId,
+      authorName:   form.authorName,
+      authorRole:   form.authorRole,
+      coverImage:   form.coverImage,
+      coverAlt:     form.coverAlt,
+      readMinutes:  form.readMinutes,
+      tagsRaw:      form.tagsRaw,
+      date:         form.date,
+      status,
+    };
+    return isEditing
+      ? api.put(`/admin/posts.php?id=${id}`, payload)
+      : api.post('/admin/posts.php', payload);
+  });
+
   const handleSave = async (status) => {
-    setSavingMode(status === 'published' ? 'publish' : 'draft');
     setFeedback('');
-    // Simulate the future API call
-    await new Promise((r) => setTimeout(r, 600));
-
-    // Record the action — different verb depending on what happened
-    let verb;
-    if (!isEditing)              verb = status === 'published' ? 'post.publish' : 'post.create';
-    else if (status === 'published') verb = 'post.publish';
-    else                          verb = 'post.update';
-
-    logAction(verb, {
-      type:  'post',
-      id:    form.slug || 'new',
-      label: form.title || 'Untitled',
-    });
-
-    setSavingMode(null);
-    const user = getUser();
-    setFeedback(
-      `Saved by ${user?.email || 'admin'} just now. ${
-        status === 'published' ? 'Publishing' : 'Drafts'
-      } will persist once the backend is wired up.`
-    );
-    setDirty(false);
+    setServerErrors({});
+    try {
+      const res = await saver.run(status);
+      const savedPost = res?.post;
+      setDirty(false);
+      setFeedback(
+        status === 'published'
+          ? `Published.`
+          : `Saved as draft.`
+      );
+      // After create, redirect to the edit URL so further saves use PUT
+      if (!isEditing && savedPost?.id) {
+        navigate(`/admin/posts/${savedPost.id}/edit`, { replace: true });
+      }
+    } catch (err) {
+      if (err.fields) setServerErrors(err.fields);
+      setFeedback(err.message || 'Could not save.');
+    }
   };
+
+  if (loading) {
+    return <div style={{ padding: 40, color: 'var(--muted)' }}>Loading post…</div>;
+  }
+  if (error) {
+    return (
+      <div style={{ padding: 40 }}>
+        <p style={{ color: 'var(--red)' }}>Could not load post: {error.message}</p>
+        <Link to="/admin/posts" className="adm-btn adm-btn-ghost" style={{ marginTop: 12 }}>
+          ← Back to posts
+        </Link>
+      </div>
+    );
+  }
+
+  const lastAction = audit.data?.actions?.[0];
 
   return (
     <div className="adm-editor">
-      {/* Header */}
       <header className="adm-page-header">
         <div>
           <span className="adm-eyebrow">
@@ -139,19 +190,19 @@ export default function PostEditor() {
           <Link to="/admin/posts" className="adm-btn adm-btn-ghost">Cancel</Link>
           <button
             type="button"
-            disabled={!!savingMode}
+            disabled={saver.loading}
             onClick={() => handleSave('draft')}
             className="adm-btn adm-btn-secondary"
           >
-            {savingMode === 'draft' ? 'Saving…' : 'Save draft'}
+            {saver.loading ? 'Saving…' : 'Save draft'}
           </button>
           <button
             type="button"
-            disabled={!!savingMode}
+            disabled={saver.loading}
             onClick={() => handleSave('published')}
             className="adm-btn adm-btn-primary"
           >
-            {savingMode === 'publish' ? 'Publishing…' : isEditing ? 'Update post' : 'Publish'}
+            {saver.loading ? 'Publishing…' : (form.status === 'published' ? 'Update post' : 'Publish')}
           </button>
         </div>
       </header>
@@ -160,9 +211,7 @@ export default function PostEditor() {
         <div className="adm-feedback" role="status">{feedback}</div>
       )}
 
-      {/* Body grid: main + sidebar */}
       <div className="adm-editor-grid">
-        {/* Main column */}
         <div className="adm-editor-main">
           <label className="adm-field">
             <span className="adm-field-label">Title</span>
@@ -173,6 +222,7 @@ export default function PostEditor() {
               placeholder="A descriptive, decisive title"
               className="adm-input adm-input-lg"
             />
+            {serverErrors.title && <span className="adm-modal-error">{serverErrors.title}</span>}
           </label>
 
           <label className="adm-field">
@@ -208,12 +258,11 @@ export default function PostEditor() {
             <RichTextEditor
               value={form.body}
               onChange={set('body')}
-              placeholder="Write the article here. Toolbar above has formatting tools…"
+              placeholder="Write the article here…"
             />
           </div>
         </div>
 
-        {/* Sidebar */}
         <aside className="adm-editor-side">
           <div className="adm-panel">
             <header className="adm-panel-header">
@@ -230,21 +279,17 @@ export default function PostEditor() {
                 <span>Visibility</span>
                 <span style={{ color: 'var(--text)' }}>Public</span>
               </div>
-              {(() => {
-                const last = isEditing && form.slug ? getLastActionForTarget('post', form.slug) : null;
-                if (!last) return null;
-                return (
-                  <div className="adm-status-row adm-status-row-stack">
-                    <span>Last activity</span>
-                    <div className="adm-status-attribution">
-                      <span style={{ color: 'var(--text)' }}>{describeAction(last.action)}</span>
-                      <span className="adm-status-by">
-                        by {last.user.email} · {timeAgo(last.at)}
-                      </span>
-                    </div>
+              {lastAction && (
+                <div className="adm-status-row adm-status-row-stack">
+                  <span>Last activity</span>
+                  <div className="adm-status-attribution">
+                    <span style={{ color: 'var(--text)' }}>{describeAction(lastAction.action)}</span>
+                    <span className="adm-status-by">
+                      by {lastAction.user.email} · {timeAgo(lastAction.at)}
+                    </span>
                   </div>
-                );
-              })()}
+                </div>
+              )}
             </div>
           </div>
 
@@ -260,7 +305,8 @@ export default function PostEditor() {
                   onChange={setEvt('categoryId')}
                   className="adm-input adm-select"
                 >
-                  {CATEGORIES.filter((c) => c.id !== 'all').map((c) => (
+                  <option value="">— pick a category —</option>
+                  {categories.map((c) => (
                     <option key={c.id} value={c.id}>{c.label}</option>
                   ))}
                 </select>
@@ -343,7 +389,7 @@ export default function PostEditor() {
             <div className="adm-panel-body">
               {form.coverImage ? (
                 <div className="adm-cover-preview">
-                  <img src={form.coverImage} alt={form.coverAlt || ''} />
+                  <img src={apiUrl(form.coverImage)} alt={form.coverAlt || ''} />
                   <button
                     type="button"
                     onClick={() => { set('coverImage')(''); set('coverAlt')(''); }}
@@ -379,20 +425,6 @@ export default function PostEditor() {
               )}
 
               <label className="adm-field">
-                <span className="adm-field-label">
-                  Image URL
-                  <span className="adm-field-hint">or use the picker above</span>
-                </span>
-                <input
-                  type="url"
-                  value={form.coverImage.startsWith('data:') ? '(uploaded file)' : form.coverImage}
-                  onChange={setEvt('coverImage')}
-                  placeholder="https://…"
-                  className="adm-input"
-                  disabled={form.coverImage.startsWith('data:')}
-                />
-              </label>
-              <label className="adm-field">
                 <span className="adm-field-label">Alt text</span>
                 <input
                   type="text"
@@ -402,11 +434,6 @@ export default function PostEditor() {
                   className="adm-input"
                 />
               </label>
-              {form.coverImage.startsWith('data:') && (
-                <p className="adm-hint">
-                  Uploaded files are stored inline until the upload endpoint is wired up.
-                </p>
-              )}
             </div>
           </div>
         </aside>
@@ -431,45 +458,10 @@ function slugify(s, allowDashes = false) {
   let out = (s || '')
     .toLowerCase()
     .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')   // strip diacritics
-    .replace(/[^a-z0-9\s-]/g, '')      // drop punctuation
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
     .trim()
-    .replace(/\s+/g, '-');             // spaces to dashes
-  if (!allowDashes) {
-    out = out.replace(/-+/g, '-');     // collapse multiple dashes
-  }
+    .replace(/\s+/g, '-');
+  if (!allowDashes) out = out.replace(/-+/g, '-');
   return out;
-}
-
-/**
- * Convert the existing posts.js block-array shape to HTML so we can edit
- * existing posts in the rich-text editor.
- */
-function blocksToHtml(blocks) {
-  return blocks
-    .map((b) => {
-      if (b.type === 'paragraph') return `<p>${escapeHtml(b.text)}</p>`;
-      if (b.type === 'heading') {
-        const level = b.level === 3 ? 3 : 2;
-        return `<h${level}>${escapeHtml(b.text)}</h${level}>`;
-      }
-      if (b.type === 'list') {
-        const tag = b.style === 'numbered' ? 'ol' : 'ul';
-        const items = (b.items || []).map((i) => `<li>${escapeHtml(i)}</li>`).join('');
-        return `<${tag}>${items}</${tag}>`;
-      }
-      if (b.type === 'quote') {
-        const cite = b.cite ? `<cite>${escapeHtml(b.cite)}</cite>` : '';
-        return `<blockquote><p>${escapeHtml(b.text)}</p>${cite}</blockquote>`;
-      }
-      return '';
-    })
-    .join('\n');
-}
-
-function escapeHtml(s) {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
 }

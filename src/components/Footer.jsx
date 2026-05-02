@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Logo from './Logo';
+import { api } from '../lib/api';
 
 const SITE_LINKS = [
   { label: 'Home', to: '/' },
@@ -32,14 +33,7 @@ export default function Footer() {
     if (!email) return;
     setStatus('loading');
     try {
-      // Wire this up when the PHP endpoint is ready:
-      // const res = await fetch('/api/newsletter.php', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email }),
-      // });
-      // if (!res.ok) throw new Error();
-      await new Promise((r) => setTimeout(r, 600)); // placeholder
+      await api.post('/newsletter.php', { email, source: 'footer' });
       setStatus('success');
       setEmail('');
     } catch {

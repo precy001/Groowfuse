@@ -1,23 +1,24 @@
 /**
- * Newsletter — subscriber list + compose dialog.
+ * Newsletter — admin view.
  *
- * Compose is fronted by an inline panel (no modal complexity) — write
- * subject + body, click send, get a "queued for delivery" confirmation.
- * Real send happens once the backend is wired up.
+ * Reads from GET /admin/subscribers.php
+ * Remove via DELETE /admin/subscribers.php?id=
+ * Send via POST /admin/newsletter-send.php
  */
 
 import { useMemo, useState } from 'react';
-import {
-  MOCK_SUBSCRIBERS,
-  formatAdminDate,
-  timeAgo,
-} from '../lib/mock-data';
 import ConfirmModal from '../components/ConfirmModal';
-import { logAction } from '../lib/audit-log';
+import { formatAdminDate, timeAgo } from '../lib/format';
+import { useSubscribers } from '../lib/data-hooks';
+import { useAsyncCallback } from '../../lib/use-async';
+import { api } from '../../lib/api';
 import { getUser } from '../lib/auth';
 
 export default function Newsletter() {
   const [view, setView] = useState('subscribers'); // 'subscribers' | 'compose'
+
+  const subs = useSubscribers('all');
+  const counts = subs.data?.counts || { confirmed: 0, pending: 0, unsubscribed: 0, total: 0 };
 
   return (
     <div className="adm-newsletter">
@@ -26,9 +27,7 @@ export default function Newsletter() {
           <span className="adm-eyebrow">Engagement</span>
           <h1 className="adm-page-title">Newsletter</h1>
           <p className="adm-page-sub">
-            {MOCK_SUBSCRIBERS.filter((s) => s.status === 'confirmed').length} confirmed ·{' '}
-            {MOCK_SUBSCRIBERS.filter((s) => s.status === 'pending').length} pending ·{' '}
-            {MOCK_SUBSCRIBERS.filter((s) => s.status === 'unsubscribed').length} unsubscribed
+            {counts.confirmed} confirmed · {counts.pending} pending · {counts.unsubscribed} unsubscribed
           </p>
         </div>
         <div className="adm-page-actions">
@@ -43,7 +42,6 @@ export default function Newsletter() {
         </div>
       </header>
 
-      {/* Tabs */}
       <div className="adm-tabs" role="tablist">
         <button
           role="tab"
@@ -63,27 +61,31 @@ export default function Newsletter() {
         </button>
       </div>
 
-      {view === 'subscribers' ? <SubscribersTable /> : <ComposeForm />}
+      {view === 'subscribers'
+        ? <SubscribersTable subs={subs} counts={counts} />
+        : <ComposeForm counts={counts} />}
     </div>
   );
 }
 
 /* ─── Subscribers table ─── */
-function SubscribersTable() {
-  const [query, setQuery] = useState('');
+function SubscribersTable({ subs, counts }) {
+  const [query, setQuery]               = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [pendingRemove, setPendingRemove] = useState(null);
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback]         = useState('');
+
+  const remover = useAsyncCallback((id) => api.del(`/admin/subscribers.php?id=${id}`));
 
   const list = useMemo(() => {
-    let l = [...MOCK_SUBSCRIBERS];
+    let l = subs.data?.subscribers || [];
     if (statusFilter !== 'all') l = l.filter((s) => s.status === statusFilter);
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       l = l.filter((s) => s.email.toLowerCase().includes(q));
     }
-    return l.sort((a, b) => new Date(b.subscribedAt) - new Date(a.subscribedAt));
-  }, [query, statusFilter]);
+    return l;
+  }, [subs.data, query, statusFilter]);
 
   const handleExport = () => {
     const csv = ['Email,Status,Source,Subscribed at']
@@ -100,6 +102,15 @@ function SubscribersTable() {
 
   return (
     <>
+      {subs.error && (
+        <div className="adm-feedback" role="alert" style={{ borderColor: 'var(--red)', color: 'var(--red)', marginBottom: 16 }}>
+          Could not load subscribers: {subs.error.message}
+          <button type="button" onClick={subs.reload} className="adm-btn adm-btn-ghost" style={{ marginLeft: 12 }}>
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="adm-toolbar">
         <div className="adm-toolbar-search">
           <input
@@ -119,10 +130,10 @@ function SubscribersTable() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="adm-input adm-select"
             >
-              <option value="all">All ({MOCK_SUBSCRIBERS.length})</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="pending">Pending</option>
-              <option value="unsubscribed">Unsubscribed</option>
+              <option value="all">All ({counts.total})</option>
+              <option value="confirmed">Confirmed ({counts.confirmed})</option>
+              <option value="pending">Pending ({counts.pending})</option>
+              <option value="unsubscribed">Unsubscribed ({counts.unsubscribed})</option>
             </select>
           </label>
           <button type="button" onClick={handleExport} className="adm-btn adm-btn-ghost">
@@ -143,10 +154,10 @@ function SubscribersTable() {
             </tr>
           </thead>
           <tbody>
-            {list.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="adm-empty">No subscribers match.</td>
-              </tr>
+            {subs.loading ? (
+              <tr><td colSpan={5} className="adm-empty">Loading…</td></tr>
+            ) : list.length === 0 ? (
+              <tr><td colSpan={5} className="adm-empty">No subscribers match.</td></tr>
             ) : (
               list.map((s) => (
                 <tr key={s.id}>
@@ -188,14 +199,16 @@ function SubscribersTable() {
       <ConfirmModal
         open={!!pendingRemove}
         onClose={() => setPendingRemove(null)}
-        onConfirm={() => {
-          logAction('subscriber.remove', {
-            type:  'subscriber',
-            id:    pendingRemove?.id,
-            label: pendingRemove?.email,
-          });
-          const user = getUser();
-          setFeedback(`Removed ${pendingRemove?.email} (by ${user?.email || 'admin'}). Removal will persist once the backend is wired up.`);
+        onConfirm={async () => {
+          if (!pendingRemove) return;
+          try {
+            await remover.run(pendingRemove.id);
+            const user = getUser();
+            setFeedback(`Removed ${pendingRemove.email} (by ${user?.email || 'admin'}).`);
+            subs.reload();
+          } catch (err) {
+            setFeedback(`Could not remove: ${err.message}`);
+          }
         }}
         title="Remove subscriber?"
         body={
@@ -205,7 +218,7 @@ function SubscribersTable() {
             They'll stop receiving newsletters. They can re-subscribe at any time.
           </p>
         }
-        confirmLabel="Remove"
+        confirmLabel={remover.loading ? 'Removing…' : 'Remove'}
         destructive
       />
     </>
@@ -213,49 +226,47 @@ function SubscribersTable() {
 }
 
 /* ─── Compose form ─── */
-function ComposeForm() {
-  const [subject, setSubject] = useState('');
+function ComposeForm({ counts }) {
+  const [subject, setSubject]     = useState('');
   const [preheader, setPreheader] = useState('');
-  const [body, setBody] = useState('');
-  const [audience, setAudience] = useState('confirmed');
-  const [status, setStatus] = useState('idle'); // 'idle' | 'sending' | 'sent'
+  const [body, setBody]           = useState('');
+  const [audience, setAudience]   = useState('confirmed');
+  const [result, setResult]       = useState(null);
+  const [error, setError]         = useState('');
 
-  const recipientCount = MOCK_SUBSCRIBERS.filter((s) => {
-    if (audience === 'confirmed') return s.status === 'confirmed';
-    if (audience === 'all')       return s.status !== 'unsubscribed';
-    return false;
-  }).length;
+  const sender = useAsyncCallback((payload) => api.post('/admin/newsletter-send.php', payload));
+
+  const recipientCount = audience === 'confirmed'
+    ? counts.confirmed
+    : (counts.confirmed + counts.pending);
 
   const handleSend = async (e) => {
     e.preventDefault();
-    setStatus('sending');
-    await new Promise((r) => setTimeout(r, 700));
-    logAction('newsletter.send', {
-      type:  'newsletter',
-      id:    `nl_${Date.now()}`,
-      label: subject,
-    }, {
-      audience,
-      recipientCount,
-    });
-    setStatus('sent');
+    setError('');
+    try {
+      const data = await sender.run({ subject, preheader, body, audience });
+      setResult(data);
+    } catch (err) {
+      setError(err.message || 'Could not send.');
+    }
   };
 
-  if (status === 'sent') {
+  if (result) {
     return (
       <div className="adm-panel adm-compose-success">
         <div className="adm-panel-body" style={{ textAlign: 'center', padding: '40px 24px' }}>
           <div className="adm-success-mark" aria-hidden>✓</div>
           <h2 style={{ marginTop: 16, fontSize: 22, fontWeight: 500 }}>
-            Newsletter <span className="gf-serif" style={{ color: 'var(--green)' }}>queued</span>.
+            Newsletter <span className="gf-serif" style={{ color: 'var(--green)' }}>sent</span>.
           </h2>
-          <p style={{ marginTop: 12, color: 'var(--muted)', maxWidth: 420, marginInline: 'auto' }}>
-            Sent by <span style={{ color: 'var(--text)' }}>{getUser()?.email || 'admin'}</span> just now.
-            Once the backend is wired up, this will reach {recipientCount} subscriber{recipientCount === 1 ? '' : 's'}.
+          <p style={{ marginTop: 12, color: 'var(--muted)', maxWidth: 460, marginInline: 'auto' }}>
+            Sent by <span style={{ color: 'var(--text)' }}>{getUser()?.email || 'admin'}</span> to{' '}
+            <strong style={{ color: 'var(--text)' }}>{result.recipientCount}</strong> recipient{result.recipientCount === 1 ? '' : 's'}
+            {typeof result.failed === 'number' && result.failed > 0 ? ` (${result.failed} failed)` : ''}.
           </p>
           <button
             type="button"
-            onClick={() => { setSubject(''); setPreheader(''); setBody(''); setStatus('idle'); }}
+            onClick={() => { setSubject(''); setPreheader(''); setBody(''); setResult(null); }}
             className="adm-btn adm-btn-ghost"
             style={{ marginTop: 24 }}
           >
@@ -279,7 +290,7 @@ function ComposeForm() {
               onChange={(e) => setSubject(e.target.value)}
               placeholder="What's the email about?"
               className="adm-input adm-input-lg"
-              disabled={status === 'sending'}
+              disabled={sender.loading}
             />
           </label>
 
@@ -294,7 +305,7 @@ function ComposeForm() {
               onChange={(e) => setPreheader(e.target.value)}
               placeholder="A short hook to entice opens…"
               className="adm-input"
-              disabled={status === 'sending'}
+              disabled={sender.loading}
             />
           </label>
 
@@ -305,11 +316,13 @@ function ComposeForm() {
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={14}
-              placeholder="Write the email body. Plain text for now — rich formatting comes when the backend lands."
+              placeholder="Write the email body. Plain text supported."
               className="adm-input adm-textarea"
-              disabled={status === 'sending'}
+              disabled={sender.loading}
             />
           </label>
+
+          {error && <p className="adm-modal-error" role="alert">{error}</p>}
         </div>
       </div>
 
@@ -320,14 +333,10 @@ function ComposeForm() {
             value={audience}
             onChange={(e) => setAudience(e.target.value)}
             className="adm-input adm-select"
-            disabled={status === 'sending'}
+            disabled={sender.loading}
           >
-            <option value="confirmed">
-              Confirmed only ({MOCK_SUBSCRIBERS.filter((s) => s.status === 'confirmed').length})
-            </option>
-            <option value="all">
-              All active ({MOCK_SUBSCRIBERS.filter((s) => s.status !== 'unsubscribed').length})
-            </option>
+            <option value="confirmed">Confirmed only ({counts.confirmed})</option>
+            <option value="all">All active ({counts.confirmed + counts.pending})</option>
           </select>
         </label>
 
@@ -337,10 +346,10 @@ function ComposeForm() {
 
         <button
           type="submit"
-          disabled={status === 'sending' || !subject || !body}
+          disabled={sender.loading || !subject || !body}
           className="adm-btn adm-btn-primary"
         >
-          {status === 'sending' ? 'Sending…' : 'Send newsletter →'}
+          {sender.loading ? 'Sending…' : 'Send newsletter →'}
         </button>
       </div>
     </form>

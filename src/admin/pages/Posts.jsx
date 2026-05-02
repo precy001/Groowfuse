@@ -1,58 +1,83 @@
 /**
- * Blog post management. Lists existing posts in a dense table, with search
- * and category filter. Edit/delete actions are placeholders until the API
- * layer can persist changes.
+ * Blog post management — admin view.
  *
- * Source today is src/data/posts.js. When the backend lands, replace the
- * import with a fetch.
+ * Reads from GET /admin/posts.php (includes drafts).
+ * Delete via DELETE /admin/posts.php?id=
+ *
+ * Search/filter/sort happen client-side over the fetched list since
+ * the admin's volume is small. If we ever cross ~500 posts we should
+ * push these into URL params and let the server filter.
  */
 
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ConfirmModal from '../components/ConfirmModal';
-import { POSTS, CATEGORIES, formatDate } from '../../data/posts';
-import { logAction } from '../lib/audit-log';
+import { formatAdminDate } from '../lib/format';
+import { useAdminPosts } from '../lib/data-hooks';
+import { useAsyncCallback } from '../../lib/use-async';
+import { api } from '../../lib/api';
 import { getUser } from '../lib/auth';
 
 export default function Posts() {
-  const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('all');
-  const [sort, setSort] = useState('date-desc');
-  const [pendingDelete, setPendingDelete] = useState(null);  // post being confirmed for deletion
-  const [feedback, setFeedback] = useState('');
+  const { data, error, loading, reload } = useAdminPosts();
+  const posts = data?.posts || [];
+
+  const [query, setQuery]                 = useState('');
+  const [category, setCategory]           = useState('all');
+  const [sort, setSort]                   = useState('date-desc');
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [feedback, setFeedback]           = useState('');
+
+  const deleter = useAsyncCallback((id) => api.del(`/admin/posts.php?id=${id}`));
+
+  // Build category options from what's actually in the data
+  const categories = useMemo(() => {
+    const map = new Map();
+    map.set('all', { id: 'all', label: `All (${posts.length})` });
+    for (const p of posts) {
+      const id = p.category?.id;
+      if (!id) continue;
+      const existing = map.get(id);
+      if (existing) {
+        existing.count = (existing.count || 1) + 1;
+      } else {
+        map.set(id, { id, label: p.category.label, count: 1 });
+      }
+    }
+    return [...map.values()];
+  }, [posts]);
 
   const filtered = useMemo(() => {
-    let list = [...POSTS];
+    let list = [...posts];
 
     if (category !== 'all') {
-      list = list.filter((p) => p.category.id === category);
+      list = list.filter((p) => p.category?.id === category);
     }
     if (query.trim()) {
       const q = query.trim().toLowerCase();
       list = list.filter(
         (p) =>
           p.title.toLowerCase().includes(q) ||
-          p.excerpt.toLowerCase().includes(q) ||
+          (p.excerpt || '').toLowerCase().includes(q) ||
           (p.tags || []).some((t) => t.toLowerCase().includes(q))
       );
     }
 
     list.sort((a, b) => {
       switch (sort) {
-        case 'date-asc':
-          return new Date(a.date) - new Date(b.date);
-        case 'title-asc':
-          return a.title.localeCompare(b.title);
-        case 'title-desc':
-          return b.title.localeCompare(a.title);
+        case 'date-asc':   return new Date(a.date || 0) - new Date(b.date || 0);
+        case 'title-asc':  return a.title.localeCompare(b.title);
+        case 'title-desc': return b.title.localeCompare(a.title);
         case 'date-desc':
-        default:
-          return new Date(b.date) - new Date(a.date);
+        default:           return new Date(b.date || 0) - new Date(a.date || 0);
       }
     });
 
     return list;
-  }, [query, category, sort]);
+  }, [posts, query, category, sort]);
+
+  const draftCount = posts.filter((p) => p.status === 'draft').length;
+  const pubCount   = posts.filter((p) => p.status === 'published').length;
 
   return (
     <div className="adm-posts">
@@ -60,7 +85,7 @@ export default function Posts() {
         <div>
           <span className="adm-eyebrow">Content</span>
           <h1 className="adm-page-title">Blog posts</h1>
-          <p className="adm-page-sub">{POSTS.length} published · 0 drafts</p>
+          <p className="adm-page-sub">{pubCount} published · {draftCount} draft{draftCount === 1 ? '' : 's'}</p>
         </div>
         <div className="adm-page-actions">
           <Link to="/admin/posts/new" className="adm-btn adm-btn-primary">
@@ -68,6 +93,15 @@ export default function Posts() {
           </Link>
         </div>
       </header>
+
+      {error && (
+        <div className="adm-feedback" role="alert" style={{ borderColor: 'var(--red)', color: 'var(--red)', marginBottom: 16 }}>
+          Could not load posts: {error.message}
+          <button type="button" onClick={reload} className="adm-btn adm-btn-ghost" style={{ marginLeft: 12 }}>
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="adm-toolbar">
@@ -89,7 +123,7 @@ export default function Posts() {
               onChange={(e) => setCategory(e.target.value)}
               className="adm-input adm-select"
             >
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <option key={c.id} value={c.id}>{c.label}</option>
               ))}
             </select>
@@ -125,29 +159,29 @@ export default function Posts() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="adm-empty">
-                  No posts match the current filters.
-                </td>
-              </tr>
+            {loading ? (
+              <tr><td colSpan={7} className="adm-empty">Loading posts…</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={7} className="adm-empty">No posts match the current filters.</td></tr>
             ) : (
               filtered.map((p) => (
-                <tr key={p.slug}>
+                <tr key={p.id}>
                   <td>
-                    <Link to={`/admin/posts/${p.slug}/edit`} className="adm-table-title">
+                    <Link to={`/admin/posts/${p.id}/edit`} className="adm-table-title">
                       {p.title}
                     </Link>
                     <span className="adm-table-slug">/{p.slug}</span>
                   </td>
                   <td>
-                    <span className="adm-tag-cell">{p.category.label}</span>
+                    <span className="adm-tag-cell">{p.category?.label || '—'}</span>
                   </td>
-                  <td className="adm-table-muted">{p.author.name}</td>
+                  <td className="adm-table-muted">{p.author?.name}</td>
                   <td className="adm-table-muted">{p.readMinutes} min</td>
-                  <td className="adm-table-muted">{formatDate(p.date)}</td>
+                  <td className="adm-table-muted">{p.date ? formatAdminDate(p.date) : '—'}</td>
                   <td>
-                    <span className="adm-pill adm-pill-confirmed">Published</span>
+                    <span className={`adm-pill adm-pill-${p.status === 'published' ? 'confirmed' : 'pending'}`}>
+                      {p.status}
+                    </span>
                   </td>
                   <td>
                     <div className="adm-row-actions">
@@ -162,7 +196,7 @@ export default function Posts() {
                         ↗
                       </Link>
                       <Link
-                        to={`/admin/posts/${p.slug}/edit`}
+                        to={`/admin/posts/${p.id}/edit`}
                         className="adm-btn-icon"
                         title="Edit"
                         aria-label={`Edit ${p.title}`}
@@ -196,14 +230,16 @@ export default function Posts() {
       <ConfirmModal
         open={!!pendingDelete}
         onClose={() => setPendingDelete(null)}
-        onConfirm={() => {
-          logAction('post.delete', {
-            type:  'post',
-            id:    pendingDelete?.slug,
-            label: pendingDelete?.title,
-          });
-          const user = getUser();
-          setFeedback(`Deleted "${pendingDelete?.title}" (by ${user?.email || 'admin'}). Delete will persist once the backend is wired up.`);
+        onConfirm={async () => {
+          if (!pendingDelete) return;
+          try {
+            await deleter.run(pendingDelete.id);
+            const user = getUser();
+            setFeedback(`Deleted "${pendingDelete.title}" (by ${user?.email || 'admin'}).`);
+            reload();
+          } catch (err) {
+            setFeedback(`Could not delete: ${err.message}`);
+          }
         }}
         title="Delete this post?"
         body={
@@ -213,7 +249,7 @@ export default function Posts() {
             This will remove the post from the site. This action can't be undone.
           </p>
         }
-        confirmLabel="Delete post"
+        confirmLabel={deleter.loading ? 'Deleting…' : 'Delete post'}
         destructive
       />
     </div>
