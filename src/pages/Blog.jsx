@@ -18,6 +18,7 @@ import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import { useReveal, useMouseGlow } from '../lib/hooks';
 import { usePostList, useCategoriesFromList, formatDate } from '../lib/posts';
+import { apiUrl } from '../lib/api';
 
 export default function Blog() {
   const [activeCategory, setActiveCategory] = useState('all');
@@ -257,7 +258,7 @@ function FeaturedPost({ post }) {
           <article className="gf-featured-grid">
             {/* Image */}
             <div className="gf-featured-image">
-              <img src={post.coverImage} alt={post.coverAlt} loading="lazy" />
+              <img src={apiUrl(post.coverImage)} alt={post.coverAlt} loading="lazy" />
               <div
                 aria-hidden
                 className="absolute inset-0 pointer-events-none"
@@ -387,7 +388,7 @@ function ExpandableListCard({ post, index, delay = 0, shown }) {
     >
       {/* Image — itself a link to the article */}
       <Link to={`/blog/${post.slug}`} className="gf-list-card-image" aria-label={`Read: ${post.title}`}>
-        <img src={post.coverImage} alt={post.coverAlt} loading="lazy" />
+        <img src={apiUrl(post.coverImage)} alt={post.coverAlt} loading="lazy" />
         <div
           aria-hidden
           className="absolute inset-0 pointer-events-none"

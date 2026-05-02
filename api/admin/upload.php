@@ -83,8 +83,11 @@ if (!@move_uploaded_file($file['tmp_name'], $absPath)) {
     fail('Could not save uploaded file.', 500);
 }
 
-// Public URL — host-relative; the frontend will prefix it with the API base URL
-$urlPrefix = rtrim((string)env('UPLOAD_URL_PREFIX', '/api/uploads'), '/');
+// Public URL — API-root-relative (e.g. "/uploads/2026/05/foo.jpg").
+// The frontend joins this with VITE_API_URL via apiUrl() to produce the
+// final src for <img>. Storing it API-relative makes the value portable
+// across environments (XAMPP subpath in dev, dedicated subdomain in prod).
+$urlPrefix = rtrim((string)env('UPLOAD_URL_PREFIX', '/uploads'), '/');
 $url       = $urlPrefix . "/{$year}/{$month}/{$filename}";
 
 audit_log($admin, 'upload.create', [

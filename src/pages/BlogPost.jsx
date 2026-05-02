@@ -18,6 +18,7 @@ import Footer from '../components/Footer';
 import SEO from '../components/SEO';
 import { useReveal } from '../lib/hooks';
 import { usePost, formatDate } from '../lib/posts';
+import { apiUrl } from '../lib/api';
 import { BookmarkIcon } from './Blog';
 
 export default function BlogPost() {
@@ -73,7 +74,7 @@ export default function BlogPost() {
     '@type': 'BlogPosting',
     'headline': post.title,
     'description': post.excerpt,
-    'image': post.coverImage,
+    'image': apiUrl(post.coverImage),
     'datePublished': post.date,
     'dateModified': post.date,
     'author': {
@@ -103,7 +104,7 @@ export default function BlogPost() {
         title={post.title}
         description={post.excerpt}
         url={articleUrl}
-        image={post.coverImage}
+        image={apiUrl(post.coverImage)}
         type="article"
         publishedTime={new Date(post.date).toISOString()}
         modifiedTime={new Date(post.date).toISOString()}
@@ -223,7 +224,7 @@ function ArticleHero({ post }) {
       {/* Cover image */}
       <div className="relative max-w-[1080px] mx-auto px-6 lg:px-10 mt-12 lg:mt-16">
         <div className="gf-article-cover">
-          <img src={post.coverImage} alt={post.coverAlt} />
+          <img src={apiUrl(post.coverImage)} alt={post.coverAlt} />
           <div
             aria-hidden
             className="absolute inset-0 pointer-events-none"
@@ -467,7 +468,7 @@ function RelatedCard({ post, delay, shown }) {
       className={`gf-post-card gf-reveal gf-reveal-${(delay % 4) + 1} ${shown ? 'is-shown' : ''}`}
     >
       <div className="gf-post-card-image">
-        <img src={post.coverImage} alt={post.coverAlt} loading="lazy" />
+        <img src={apiUrl(post.coverImage)} alt={post.coverAlt} loading="lazy" />
         <div
           aria-hidden
           className="absolute inset-0 pointer-events-none"

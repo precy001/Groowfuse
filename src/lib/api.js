@@ -142,19 +142,26 @@ export const api = {
 };
 
 /**
- * Convenience: build an absolute URL for a relative API path. Useful
- * when the server returns a path-only URL (like /api/uploads/...) and
- * we need a full one for an <img src>.
+ * Convenience: build an absolute URL for a relative API path. Used
+ * whenever an <img src> needs to display a server-stored asset.
+ *
+ * Handles three input shapes:
+ *   1. Absolute URL          → returned untouched
+ *   2. API-relative path     → BASE + path
+ *      e.g. "/uploads/foo.jpg" → "http://localhost/Groowfuse/api/uploads/foo.jpg"
+ *   3. Legacy host-rooted    → strips a leading "/api/" so paths from old
+ *      data still work after the URL contract changed
+ *      e.g. "/api/uploads/foo.jpg" → BASE + "/uploads/foo.jpg"
  */
 export function apiUrl(path) {
   if (!path) return '';
   if (/^https?:\/\//i.test(path)) return path;
-  // The backend's UPLOAD_URL_PREFIX is host-rooted (e.g. /api/uploads/...).
-  // We need to turn that into a same-origin URL on the API host.
-  try {
-    const apiOrigin = new URL(BASE).origin;
-    return apiOrigin + (path.startsWith('/') ? path : `/${path}`);
-  } catch {
-    return path;
-  }
+  if (!BASE) return path;          // misconfigured — return as-is rather than break
+
+  // If the server returned a host-rooted path that includes "/api/", strip
+  // it. Whatever follows is API-root-relative and we can join it with BASE.
+  let rel = path.startsWith('/api/') ? path.slice(4) : path;
+  if (!rel.startsWith('/')) rel = '/' + rel;
+
+  return BASE + rel;
 }
