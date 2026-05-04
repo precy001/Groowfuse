@@ -76,6 +76,7 @@ function send_mail($to, string $subject, string $htmlBody, ?string $textBody = n
                     $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
                 }
 
+                $mail->SMTPDebug = 2; $mail->Debugoutput = function($str, $level) { error_log("[smtp $level] $str"); };
                 // Reasonable timeout — don't let a slow MX hang the page
                 $mail->Timeout = 15;
 
